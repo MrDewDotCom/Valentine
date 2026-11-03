@@ -15,7 +15,7 @@ Double-click **`builder.html`** to open it in your browser. Everything is set up
 | 3. The note & messages | The question, Yes/No text, what "No" turns into, the signature and the messages after "Yes" |
 | 4. Flowers in the box | Drag flowers around the bottom of the box. There are 5 types: **rose, tulip, daisy, sunflower, cherry blossom**. Click a flower to change its type, colour and size, put it on top or underneath, copy it or remove it. Quick layouts fill the box for you. Flowers can overlap: one added later rests and leans on top of the others, and never passes through them |
 | 5. Behind the note | What lies on the bottom of the box around the note: **rose petals, paper hearts, confetti, crinkle paper** or nothing. Also its colour, how much there is, and the floor colour |
-| 6. Music & sound | Built-in music-box melody, **your own song** (mp3), or no music. You can also turn sound effects off and set the volumes |
+| 6. Music & sound | Upload your songs once, then pick a music plan (see below). You can also turn sound effects off and set the volumes |
 | 7. Photos | Choose or drop photos and add a caption to each. ◀ ▶ changes the order |
 
 Then use the buttons at the bottom:
@@ -26,6 +26,18 @@ Then use the buttons at the bottom:
 - **↺ Start over** goes back to the default settings.
 
 The builder remembers your settings in that browser. Big photos and songs may not fit in its memory, so keep your downloaded `index.html` and reopen it with **📂 Open a page I made** to continue later.
+
+### The 3 music plans
+
+| Plan | What happens |
+|---|---|
+| 🎼 **Simple** | One music for the whole page: the built-in music box, one of your songs, or none. It starts when the gift opens |
+| 💓 **One song, hook on "Yes"** | Your song plays softly from the **soft start** point. After the gift opens it waits a little, then fades right down and **stops completely** while they think. When they press **Yes**, it jumps straight to the **hook** at full volume and keeps playing from there (looping back to the hook) |
+| 🎬 **Different music for each part** | Choose music for **1. before opening**, **2. after opening** and **3. after "Yes"**: nothing, the music box, keep what was playing, or one of your songs starting at any point. Changes crossfade smoothly |
+
+**Picking the soft start / hook:** each song shows a **waveform** (the loud parts look taller, so the chorus is easy to spot). Click a marker chip (**Soft start** or **Hook ♥**), then click or drag on the waveform to place it, or type the time (`1:23.5`). Use **▶** to listen from that point.
+
+> Browsers don't allow sound until the visitor taps, so if music should play **before** the gift opens, the page first shows a **"Tap to begin"** screen. You can change its text in section 3.
 
 ### The 5 opening animations
 
@@ -64,7 +76,7 @@ Everything the builder sets is in one block near the top of `index.html`'s `<scr
 SETTINGS: change everything here
 ```
 
-It's around **line 551**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
+It's around **line 570**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
 
 | Setting | What it does |
 |---|---|
@@ -78,7 +90,12 @@ It's around **line 551**, inside `const CONFIG = { … }`. In the default `index
 | `floor.base` | Colour of the box floor itself; `''` = a darker shade of the box colour |
 | `photos` | `{ src: 'photos/me.jpg', caption: '…' }`. File names are case-sensitive online |
 | `slideSeconds`, `photosDelay` | Slideshow timing |
-| `sound.music` | `'builtin'`, `'none'`, or a file such as `'sounds/our-song.mp3'` |
+| `sound.plan` | `'simple'`, `'hook'` or `'stages'` (see the music plans above) |
+| `sound.songs` | Your songs: `{ name: 'Our song', src: 'sounds/our-song.mp3' }`. Elsewhere you refer to them as `'song:0'`, `'song:1'`, … |
+| `sound.music` | For `'simple'`: `'builtin'`, `'none'` or `'song:0'` |
+| `sound.hook` | For `'hook'`: `song`, `softStart` and `hook` (seconds), `softVolume`, `beginAt` (`'start'` or `'open'`), `quietAfter` (seconds after opening before it gets quieter), `fadeTime` (seconds to fade down, then the song stops) |
+| `sound.stages` | For `'stages'`: `before`, `opened`, `yes`, each `{ music: …, start: seconds }`. `music` can also be `'continue'` (keep playing) |
+| `text.startHint` | Text on the "Tap to begin" screen |
 | `sound.effects` | `false` turns off the pop, chime and pencil sounds |
 | `sound.files.open / reveal / hover / no / yes` | Your own mp3 for any one sound effect (`''` keeps the built-in sound) |
 

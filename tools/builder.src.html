@@ -876,7 +876,7 @@ function addSongs(fileList) {
 /* --- plans --- */
 const PLANS = [
   ['simple', '🎼 Simple', 'One music for the whole page, starting when the gift opens.'],
-  ['hook',   '💓 One song, hook on "Yes"', 'Plays softly, slowly fades away while they think, then jumps to the hook when they say Yes.'],
+  ['hook',   '💓 One song, hook on "Yes"', 'Plays softly, fades right down and stops while they think, then jumps to the hook when they say Yes.'],
   ['stages', '🎬 Different music for each part', 'Choose music before opening, after opening, and after "Yes".'],
 ];
 function drawPlans() {
@@ -914,7 +914,7 @@ function drawPlan() {
         </div>
         <label class="f">Soft volume while waiting <input type="range" id="softVol" min="0.05" max="1" step="0.05" value="${H.softVolume}"></label>
         <label class="f">Start getting quieter after (seconds, after the gift opens) <input type="number" id="quietAfter" min="0" max="600" step="1" value="${H.quietAfter}"></label>
-        <label class="f">Fade to silence over (seconds) <input type="number" id="fadeTime" min="1" max="600" step="1" value="${H.fadeTime}"></label>
+        <label class="f">Fade down and stop the song over (seconds) <input type="number" id="fadeTime" min="1" max="600" step="1" value="${H.fadeTime}"></label>
       </div>`;
     $('hookSong').onchange = e => { H.song = e.target.value; drawPlan(); save(); };
     P.querySelectorAll('input[name=beginAt]').forEach(r => r.onchange = () => { H.beginAt = r.value; save(); });
