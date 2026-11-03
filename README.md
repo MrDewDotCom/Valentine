@@ -13,9 +13,10 @@ Double-click **`builder.html`** to open it in your browser. Everything is set up
 | 1. Gift box | Box colour and ribbon/bow colour (with a spinning 3D preview) |
 | 2. How it opens | The 3D opening animation (see below) |
 | 3. The note & messages | The question, Yes/No text, what "No" turns into, the signature and the messages after "Yes" |
-| 4. Flowers in the box | Drag flowers around the bottom of the box. There are 5 types: **rose, tulip, daisy, sunflower, cherry blossom**. Click a flower to change its type, colour and size, put it on top or underneath, copy it or remove it. Quick layouts fill the box for you |
-| 5. Music & sound | Built-in music-box melody, **your own song** (mp3), or no music. You can also turn sound effects off and set the volumes |
-| 6. Photos | Choose or drop photos and add a caption to each. ◀ ▶ changes the order |
+| 4. Flowers in the box | Drag flowers around the bottom of the box. There are 5 types: **rose, tulip, daisy, sunflower, cherry blossom**. Click a flower to change its type, colour and size, put it on top or underneath, copy it or remove it. Quick layouts fill the box for you. Flowers can overlap: one added later rests and leans on top of the others, and never passes through them |
+| 5. Behind the note | What lies on the bottom of the box around the note: **rose petals, paper hearts, confetti, crinkle paper** or nothing. Also its colour, how much there is, and the floor colour |
+| 6. Music & sound | Built-in music-box melody, **your own song** (mp3), or no music. You can also turn sound effects off and set the volumes |
+| 7. Photos | Choose or drop photos and add a caption to each. ◀ ▶ changes the order |
 
 Then use the buttons at the bottom:
 
@@ -63,7 +64,7 @@ Everything the builder sets is in one block near the top of `index.html`'s `<scr
 SETTINGS: change everything here
 ```
 
-It's around **line 548**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
+It's around **line 551**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
 
 | Setting | What it does |
 |---|---|
@@ -71,8 +72,10 @@ It's around **line 548**, inside `const CONFIG = { … }`. In the default `index
 | `reveal.mode` | `'scroll'`, `'taps'`, `'auto'`, `'hold'` or `'unfold'` |
 | `reveal.taps` / `reveal.holdSeconds` | Number of taps for "taps", seconds to hold for "hold" |
 | `text.*` | All the words. `<br>` makes a new line. A long question shrinks automatically to fit the note |
-| `flowers` | A list like `{ type: 'rose', color: '#e8335f', x: -60, y: -64, size: 40 }`. Types are `rose`, `tulip`, `daisy`, `sunflower` and `sakura`. `x`/`y` go from -88 to 88 (0,0 is the centre). Flowers can never poke through the box walls |
-| `loosePetals` | `true` or `false`: scattered petals on the note |
+| `flowers` | A list like `{ type: 'rose', color: '#e8335f', x: -60, y: -64, size: 40 }`. Types are `rose`, `tulip`, `daisy`, `sunflower` and `sakura`. `x`/`y` go from -88 to 88 (0,0 is the centre). Flowers can never poke through the box walls or through each other; later ones rest on top |
+| `floor.fill` | `'petals'`, `'hearts'`, `'confetti'`, `'shred'` (crinkle paper) or `'none'`: what lies around the note |
+| `floor.color`, `floor.amount` | Colour of that fill (confetti mixes its own colours), and how many pieces (0 – 200) |
+| `floor.base` | Colour of the box floor itself; `''` = a darker shade of the box colour |
 | `photos` | `{ src: 'photos/me.jpg', caption: '…' }`. File names are case-sensitive online |
 | `slideSeconds`, `photosDelay` | Slideshow timing |
 | `sound.music` | `'builtin'`, `'none'`, or a file such as `'sounds/our-song.mp3'` |

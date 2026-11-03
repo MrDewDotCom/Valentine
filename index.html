@@ -328,7 +328,9 @@
     opacity: .7;
   }
 
-  #roses { position: absolute; inset: 0; pointer-events: none; }
+  #roses, #floorFill { position: absolute; inset: 0; pointer-events: none; }
+  .fi { position: absolute; left: 50%; top: 50%; backface-visibility: visible; }
+  .fi svg { width: 100%; height: 100%; display: block; overflow: visible; }
   /* 3D roses: each one is built from layered petal planes that open outward */
   .r3d { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
   .r3d .pt {
@@ -494,6 +496,7 @@
 
       <div class="box" id="box" role="button" aria-label="Open the gift" tabindex="0">
         <div class="plane floor" id="floor">
+          <div id="floorFill"></div>
           <div class="note" id="note">
             <h1>Will you be<br>my Valentine?</h1>
             <div class="options">
@@ -599,11 +602,18 @@ const CONFIG = {
     { type: 'sakura', color: '#ffc3d6', x: -72, y:  36, size: 28 },
     { type: 'rose',   color: '#e8335f', x:  60, y:  60, size: 40 },
     { type: 'daisy',  color: '#ffffff', x:  34, y:  78, size: 32 },
-    { type: 'rose',   color: '#ff5c86', x:  72, y:  46, size: 32 },
+    { type: 'rose',   color: '#ff5c86', x:  70, y:  56, size: 28 },
     { type: 'sakura', color: '#ffc3d6', x:   0, y:  82, size: 28 },
     { type: 'rose',   color: '#d81f4f', x:   2, y: -82, size: 30 },
   ],
-  loosePetals: true,        // a few petals scattered over the note
+
+  // ---- Bottom of the box, around and under the note ------------------------
+  floor: {
+    fill: 'petals',         // 'petals' | 'hearts' | 'confetti' | 'shred' (crinkle paper) | 'none'
+    color: '#e8335f',       // colour of the petals / hearts / paper (confetti mixes colours)
+    amount: 90,             // how many, 0 – 200
+    base: '',               // colour of the floor itself; '' = a darker shade of the box colour
+  },
 
   // ---- Photos shown after they say "Yes" ---------------------------------
   // Put your pictures in the "photos" folder, then list them here.
@@ -858,33 +868,114 @@ const CONFIG = {
     return g;
   }
 
+  /* ---------- the floor: petals / hearts / confetti / crinkle paper around the note ---------- */
+  /*FLOOR-GEN-START*/
+  // Same layout every time (seeded), so builder.html can preview exactly what the page shows.
+  function floorItems(F) {
+    F = F || {};
+    const kind = F.fill;
+    if (!kind || kind === 'none') return [];
+    const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+    const shade = (col, t) => {
+      let h = String(col || '#e8335f').replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join('');
+      const n = parseInt(h.padEnd(6, '0').slice(0, 6), 16) || 0;
+      const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(t >= 0 ? v + (255 - v) * t : v * (1 + t)));
+      return `rgb(${c.join(',')})`;
+    };
+    let seed = 20240214;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const n = cl(Math.round(+F.amount || 0), 0, 200), base = F.color || '#e8335f';
+    const th = -4 * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
+    const out = [];
+    for (let tries = 0; out.length < n && tries < n * 30; tries++) {
+      const x = (rnd() * 2 - 1) * 82, y = (rnd() * 2 - 1) * 82;
+      const lx = x * co + y * si, ly = -x * si + y * co;          // position relative to the (rotated) note
+      if (Math.abs(lx) < 58 && Math.abs(ly) < 68) continue;       // hidden under the note anyway
+      const v = rnd(), rot = rnd() * 360;
+      let it;
+      if (kind === 'petals') it = { shape: 'petal', w: 10 + v * 8, h: 7 + v * 6, color: shade(base, (rnd() - .5) * .35) };
+      else if (kind === 'hearts') it = { shape: 'heart', w: 6 + v * 6, h: 6 + v * 6, color: [base, shade(base, .4), '#ffffff', shade(base, -.15)][Math.floor(rnd() * 4)] };
+      else if (kind === 'confetti') it = { shape: rnd() < .5 ? 'dot' : 'rect', w: 2.5 + v * 3, h: 2.5 + v * 3, color: ['#ffd36e', base, '#ffffff', shade(base, .45), '#ff9ec4', '#9be7ff'][Math.floor(rnd() * 6)] };
+      else it = { shape: 'shred', w: 3, h: 14 + v * 14, color: shade(base, (rnd() - .5) * .4) };
+      if (it.shape === 'rect') it.h = it.w * (.4 + rnd() * .4);
+      out.push(Object.assign(it, { x, y, rot }));
+    }
+    return out;
+  }
+  /*FLOOR-GEN-END*/
+  {
+    const F = CONFIG.floor || { fill: CONFIG.loosePetals === false ? 'none' : 'petals', color: '#e8335f', amount: 60 };
+    if (F.base) {
+      const [fh, fs, fl] = hexToHsl(F.base);
+      document.documentElement.style.setProperty('--floor1', hsl(fh, fs, fl + 6));
+      document.documentElement.style.setProperty('--floor2', hsl(fh, fs, fl - 10));
+    }
+    const ff = $('floorFill');
+    floorItems(F).forEach((it, i) => {
+      const d = document.createElement('div');
+      d.className = 'fi';
+      if (it.shape === 'petal') d.innerHTML = `<svg viewBox="0 0 20 14" preserveAspectRatio="none"><path d="M1 7 C4 0 15 0 19 7 C15 14 4 14 1 7Z" fill="${it.color}"/><path d="M4 7 C7 4 13 4 16 7" stroke="rgba(255,255,255,.35)" stroke-width="1.2" fill="none"/></svg>`;
+      else if (it.shape === 'heart') d.innerHTML = `<svg viewBox="0 0 20 18" preserveAspectRatio="none"><path d="M10 17 C-6 7 3 -3 10 4 C17 -3 26 7 10 17Z" fill="${it.color}"/></svg>`;
+      else if (it.shape === 'shred') d.innerHTML = `<svg viewBox="0 0 6 40" preserveAspectRatio="none"><polyline points="3,0 1,6 5,12 1,18 5,24 1,30 5,36 3,40" fill="none" stroke="${it.color}" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
+      else { d.style.background = it.color; if (it.shape === 'dot') d.style.borderRadius = '50%'; }
+      // lies flat on the floor, just below the note (the note sits at 1px)
+      place(d, it.w, it.h, `translate3d(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px, ${(.15 + (i % 5) * .12).toFixed(2)}px) rotateZ(${it.rot.toFixed(0)}deg)`);
+      ff.appendChild(d);
+    });
+  }
+
+  /* ---------- place the flowers: they may overlap, but never pass through each other ---------- */
+  // Each flower is treated as a little drum: 'pr' = petal radius, 'H' = height, 'Lr' = leaf radius.
+  // A flower that overlaps earlier ones is raised and leans so it rests on top of them.
+  const SHAPE = {
+    rose:      { pr: .5,  H: S => .32 * S + 3 },
+    tulip:     { pr: .32, H: S => .55 * S + 1.5 },
+    daisy:     { pr: .52, H: S => .14 * S + 5 },
+    sunflower: { pr: .55, H: S => .14 * S + 4 },
+    sakura:    { pr: .5,  H: S => .22 * S + 2.5 },
+  };
   const rosesEl = $('roses');
   const placed = [];
   (CONFIG.flowers || []).forEach((f0, i) => {
     const f = Object.assign({ type: 'rose', color: '#e8335f', x: 0, y: 0, size: 36 }, f0);
-    f.size = clamp(+f.size || 36, 14, 70);
+    if (!FLOWERS[f.type]) f.type = 'rose';
+    const S = f.size = clamp(+f.size || 36, 14, 70);
     // keep every petal and leaf inside the box walls (inner walls sit at ±89px)
-    const lim = Math.max(0, 85 - f.size * (FLOWERS[f.type] || FLOWERS.rose).reach);
+    const lim = Math.max(0, 85 - S * FLOWERS[f.type].reach);
     const x = clamp(+f.x || 0, -lim, lim), y = clamp(+f.y || 0, -lim, lim);
-    // flowers listed later sit on top of the ones they overlap
-    const under = placed.filter(p => Math.hypot(p.x - x, p.y - y) < (p.size + f.size) * .45).length;
-    const h = 1 + Math.min(under, 4) * 3;
-    placed.push({ x, y, size: f.size });
+    const sh = SHAPE[f.type], pr = sh.pr * S, Lr = FLOWERS[f.type].reach * S, H = sh.H(S);
+    const g = 1.3;                                   // resting height on the note
+    let best = { c: g, m: 0, dir: [1, 0], need: 0 };
+    const needs = [];
+    placed.forEach(p => {
+      const d = Math.hypot(x - p.x, y - p.y);
+      let need = 0, w = 0;
+      if (d < Lr + p.pr) { need = p.top + .6; w = Lr + p.pr - d; }            // over its petals
+      else if (d < Lr + p.Lr) { need = p.leafTop + .6; w = Lr + p.Lr - d; }   // over its leaves only
+      else return;
+      const dir = d > .01 ? [(x - p.x) / d, (y - p.y) / d] : [1, 0];
+      needs.push({ need, w, dir, p });
+      // lean: the far edge stays down, the edge over the other flower rises just enough
+      let m = (need - g) / Math.max(1, 2 * Lr - w), c;
+      if (w > 1.2 * Lr || Math.atan(m) > 0.7) { m = 0; c = need; } else c = g + Lr * m;
+      if (need > best.need) best = { c, m, dir, need };
+    });
+    // check the chosen lean also clears every other flower it touches; if not, lie flat on top of all
+    const heightAt = (u) => best.c - u * Math.sin(Math.atan(best.m));
+    const ok = needs.every(n => {
+      const along = n.dir[0] * best.dir[0] + n.dir[1] * best.dir[1];        // how much this neighbour lines up with the lean
+      const u = -(Lr - n.w) * along;                                          // inner end of that overlap
+      return heightAt(u) >= n.need - .01 || best.m === 0 && best.c >= n.need;
+    });
+    if (!ok) best = { c: Math.max(g, ...needs.map(n => n.need)), m: 0, dir: [1, 0] };
+    const tilt = Math.atan(best.m) * 180 / Math.PI;
+    const lean = Lr * Math.sin(Math.atan(best.m));
+    placed.push({ x, y, pr, Lr, top: best.c + H + lean, leafTop: best.c + .12 * S + lean });
+    const phi = Math.atan2(best.dir[1], best.dir[0]) * 180 / Math.PI;
     const el = buildFlower(f, i + 1);
-    el.style.transform = `translate3d(${x}px, ${y}px, ${h}px)`;
+    el.style.transform = `translate3d(${x}px, ${y}px, ${best.c.toFixed(2)}px) rotateZ(${phi.toFixed(1)}deg) rotateY(${tilt.toFixed(2)}deg) rotateZ(${(-phi).toFixed(1)}deg)`;
     rosesEl.appendChild(el);
   });
-  // a few loose petals scattered over the note
-  if (CONFIG.loosePetals !== false) {
-    const pc = (CONFIG.flowers && CONFIG.flowers[0] && CONFIG.flowers[0].color) || '#e8335f';
-    [[-20, -44, 30, 6], [26, -40, 140, 7], [-8, 40, 250, 8], [30, 22, 80, 7]].forEach(([x, y, a, h]) => {
-      const p = document.createElement('div');
-      p.className = 'petal-loose';
-      p.innerHTML = `<svg viewBox="0 0 20 14" width="11" height="8"><path d="M1 7 C4 0 15 0 19 7 C15 14 4 14 1 7Z" fill="${pc}"/></svg>`;
-      place(p, 11, 8, `translate3d(${x}px, ${y}px, ${h}px) rotateZ(${a}deg)`);
-      rosesEl.appendChild(p);
-    });
-  }
 
   /* ---------- sound (all generated live with Web Audio, no files) ---------- */
   const Sound = (() => {
@@ -1084,7 +1175,7 @@ const CONFIG = {
 
   let lastTransform = '', lastTime = performance.now();
   function tick(now) {
-    const realDt = Math.min(0.5, (now - lastTime) / 1000); lastTime = now;
+    const realDt = Math.min(1, (now - lastTime) / 1000); lastTime = now;
     const dt = Math.min(0.1, realDt);
     const k = 1 - Math.exp(-dt * 6);     // frame-rate independent smoothing
     const kz = 1 - Math.exp(-dt * 1.8);  // the zoom glides more slowly
@@ -1209,7 +1300,26 @@ const CONFIG = {
   let tapsLeft = clamp(Math.round(+RV.taps || 3), 1, 20);
   let holding = false, charge = 0, lastFilled = -1;
   const hintLine = T.tapHint;
-  function setHint(small) { hint.innerHTML = `<span class="line">${hintLine}</span>${small ? `<small>${small}</small>` : ''}`; }
+  hint.innerHTML = `<span class="line">${hintLine}</span><small id="hintSmall"></small>`;
+  function setHint(small) {
+    const el = $('hintSmall');
+    if (el) { el.textContent = small || ''; el.style.display = small ? '' : 'none'; }
+  }
+  setHint('');
+  // the text above the gift hides while you're touching the box, and comes back 1s after you stop
+  let hintTimer = null;
+  function hideHintWhileTouching() {
+    if (phase !== 'closed') return;
+    clearTimeout(hintTimer);
+    hint.style.opacity = 0;
+  }
+  function showHintSoon() {
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => { if (phase === 'closed') hint.style.opacity = 1; }, 1000);
+  }
+  box.addEventListener('pointerdown', hideHintWhileTouching);
+  window.addEventListener('pointerup', () => { if (phase === 'closed' && hint.style.opacity === '0') showHintSoon(); });
+  window.addEventListener('pointercancel', () => { if (phase === 'closed' && hint.style.opacity === '0') showHintSoon(); });
   function setHoldHint(n) { setHint((isTouch ? 'Press and hold the gift ' : 'Press and hold the gift ') + '💗'.repeat(n) + '🤍'.repeat(5 - n)); }
   if (MODE === 'taps') setHint(`Tap it ${tapsLeft} time${tapsLeft > 1 ? 's' : ''} 💓`);
   if (MODE === 'hold') setHoldHint(0);
@@ -1243,6 +1353,7 @@ const CONFIG = {
   let hintReady = false;
   function openGift() {
     if (phase !== 'closed') return;
+    clearTimeout(hintTimer);
     phase = 'opened';
     box.classList.remove('hop');
     if (MODE !== 'scroll') heartBurst(14);
