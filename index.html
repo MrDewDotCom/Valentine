@@ -667,10 +667,10 @@ const CONFIG = {
       song: 'song:0',
       softStart: 0,         // seconds: where the soft part starts playing
       hook: 60,             // seconds: where the hook / chorus starts (played when they say Yes)
-      softVolume: 0.45,     // 0 – 1, volume while waiting
-      beginAt: 'start',     // 'start' = as soon as the page is tapped, 'open' = when the gift opens
-      quietAfter: 15,       // seconds after the gift opens before it starts getting quieter
-      fadeTime: 40,         // seconds to fade from soft to silent; then the song stops completely
+      softVolume: 0.7,      // 0 – 1, volume before they say Yes
+      beginAt: 'start',     // 'start' = from the moment the page opens, 'open' = when the gift opens
+      quietAfter: 0,        // seconds after they reach the note before it starts getting quieter
+      fadeTime: 10,         // seconds to fade down while they read; then the song stops completely
     },
 
     stages: {               // for plan 'stages'
@@ -1033,7 +1033,7 @@ const CONFIG = {
     const SC = Object.assign({ plan: 'simple', music: 'builtin', musicVolume: .85, effects: true, effectsVolume: .8, songs: [] }, CONFIG.sound);
     const files = SC.files || {};
     if (files.music && (!SC.music || SC.music === 'builtin')) SC.music = files.music;   // older setting name
-    SC.hook = Object.assign({ song: 'song:0', softStart: 0, hook: 60, softVolume: .45, beginAt: 'start', quietAfter: 15, fadeTime: 40 }, SC.hook);
+    SC.hook = Object.assign({ song: 'song:0', softStart: 0, hook: 60, softVolume: .7, beginAt: 'start', quietAfter: 0, fadeTime: 10 }, SC.hook);
     SC.stages = Object.assign({ before: { music: 'none' }, opened: { music: 'builtin' }, yes: { music: 'continue' } }, SC.stages);
     const PLAN = ['simple', 'hook', 'stages'].includes(SC.plan) ? SC.plan : 'simple';
     function init() {
@@ -1237,14 +1237,28 @@ const CONFIG = {
     function onOpen() {
       if (PLAN === 'simple') { setTimeout(() => play(SC.music, 0, SC.musicVolume, 4), 900); return; }
       if (PLAN === 'stages') { setTimeout(() => play(SC.stages.opened.music, +SC.stages.opened.start || 0), 500); return; }
-      // hook plan: soft song, then slowly fade away while they decide
+      // hook plan: the song keeps playing while the gift opens
       if (H.beginAt === 'open' || !current) play(H.song, +H.softStart || 0, SC.musicVolume * H.softVolume, 2.5);
-      clearTimeout(quietTimer);
-      quietTimer = setTimeout(() => {           // still waiting for an answer: fade right down, then stop
+    }
+    let fading = false;
+    function onInside() {                      // they've reached the note: fade the song away, then stop it
+      if (PLAN !== 'hook' || saidYes || fading) return;
+      fading = true;
+      quietTimer = setTimeout(() => {
         if (saidYes || !current) return;
-        const secs = Math.max(1, +H.fadeTime || 40);
+        const secs = Math.max(1, +H.fadeTime || 10);
         if (current.fadeOutStop) current.fadeOutStop(secs); else current.stop(secs);
       }, Math.max(0, +H.quietAfter || 0) * 1000);
+    }
+    // Try to start the music as soon as the page opens. Browsers only allow this if the visitor
+    // has already interacted with the site; otherwise the "Tap to begin" screen is shown.
+    async function autoStart() {
+      init();
+      if (!ctx) return false;
+      try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 500))]); } catch (e) {}
+      if (ctx.state !== 'running') return false;
+      onStart();
+      return true;
     }
     function onYes() {
       saidYes = true; clearTimeout(quietTimer);
@@ -1272,7 +1286,7 @@ const CONFIG = {
       return true;
     }
     return {
-      startMusic, onStart, onOpen, onYes, needsStart,
+      startMusic, onStart, onOpen, onInside, onYes, needsStart, autoStart,
       debug: () => current && current.kind === 'file' ? { t: +current.el.currentTime.toFixed(2), vol: +(current.gain ? current.gain.gain.value : current.el.volume).toFixed(3), paused: current.el.paused } : current ? { kind: current.kind, vol: +music.gain.value.toFixed(3) } : null,
       open() {                                  // lid pops, then whooshes away
         if (custom('open')) return;
@@ -1578,16 +1592,22 @@ const CONFIG = {
   });
 
   if (Sound.needsStart) {
-    const st = $('startScreen');
-    $('startText').textContent = T.startHint || 'Tap to begin';
-    st.hidden = false;
-    st.addEventListener('click', () => { Sound.onStart(); st.classList.add('gone'); setTimeout(() => st.remove(), 1000); }, { once: true });
+    // music should already be playing over the floating gift: start it straight away if the browser
+    // allows, otherwise ask for one tap first
+    Sound.autoStart().then(ok => {
+      if (ok) return;
+      const st = $('startScreen');
+      $('startText').textContent = T.startHint || 'Tap to begin';
+      st.hidden = false;
+      st.addEventListener('click', () => { Sound.onStart(); st.classList.add('gone'); setTimeout(() => st.remove(), 1000); }, { once: true });
+    });
   }
   $('hintOut').textContent = isTouch ? '↓ Swipe down or pinch in to step back' : '↑ Scroll up to step back';
   function enterInside() {
     phase = 'inside';
     box.classList.add('inside');
     Sound.reveal();
+    Sound.onInside();
   }
   function leaveInside() {
     phase = 'opened';

@@ -876,7 +876,7 @@ function addSongs(fileList) {
 /* --- plans --- */
 const PLANS = [
   ['simple', '🎼 Simple', 'One music for the whole page, starting when the gift opens.'],
-  ['hook',   '💓 One song, hook on "Yes"', 'Plays softly, fades right down and stops while they think, then jumps to the hook when they say Yes.'],
+  ['hook',   '💓 One song, hook on "Yes"', 'Plays from the start and while the gift opens, fades away and stops while they read the note, then the hook comes in when they say Yes.'],
   ['stages', '🎬 Different music for each part', 'Choose music before opening, after opening, and after "Yes".'],
 ];
 function drawPlans() {
@@ -909,12 +909,12 @@ function drawPlan() {
       </div>
       <div class="grid2">
         <div class="f" style="grid-column:1/-1">Start the song
-          <label class="row" style="gap:8px"><input type="radio" name="beginAt" value="start" ${H.beginAt !== 'open' ? 'checked' : ''}> When the page starts (shows "Tap to begin")</label>
+          <label class="row" style="gap:8px"><input type="radio" name="beginAt" value="start" ${H.beginAt !== 'open' ? 'checked' : ''}> As soon as the page opens, over the floating gift</label>
           <label class="row" style="gap:8px"><input type="radio" name="beginAt" value="open" ${H.beginAt === 'open' ? 'checked' : ''}> When the gift opens</label>
         </div>
-        <label class="f">Soft volume while waiting <input type="range" id="softVol" min="0.05" max="1" step="0.05" value="${H.softVolume}"></label>
-        <label class="f">Start getting quieter after (seconds, after the gift opens) <input type="number" id="quietAfter" min="0" max="600" step="1" value="${H.quietAfter}"></label>
-        <label class="f">Fade down and stop the song over (seconds) <input type="number" id="fadeTime" min="1" max="600" step="1" value="${H.fadeTime}"></label>
+        <label class="f">Volume before "Yes" <input type="range" id="softVol" min="0.05" max="1" step="0.05" value="${H.softVolume}"></label>
+        <label class="f">When they reach the note, wait (seconds) before fading <input type="number" id="quietAfter" min="0" max="600" step="1" value="${H.quietAfter}"></label>
+        <label class="f">Then fade down and stop over (seconds) <input type="number" id="fadeTime" min="1" max="600" step="1" value="${H.fadeTime}"></label>
       </div>`;
     $('hookSong').onchange = e => { H.song = e.target.value; drawPlan(); save(); };
     P.querySelectorAll('input[name=beginAt]').forEach(r => r.onchange = () => { H.beginAt = r.value; save(); });
