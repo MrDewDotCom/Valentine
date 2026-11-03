@@ -14,6 +14,11 @@
     --rose: #e8335f;
     --cream: #fff4f0;
     --s: 1;
+    /* box + ribbon colours (overwritten from CONFIG.box by the script) */
+    --box-hi: #ff7898; --box-lt: #ff4f78; --box: #e8335f; --box-dk: #c21f4c;
+    --box-in1: #e04a72; --box-in2: #b0204c; --box-in3: #6b0f2e;
+    --floor1: #8a1638; --floor2: #4e0a22; --under1: #c42552; --under2: #7d1131;
+    --rib: #ffd36e; --rib-dk: #f3b33d;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -129,29 +134,60 @@
     backface-visibility: hidden;
     background:
       linear-gradient(rgba(40,0,15,var(--sh,0)), rgba(40,0,15,var(--sh,0))),
-      linear-gradient(90deg, transparent 76px, #ffd36e 76px, #f3b33d 104px, transparent 104px),
-      linear-gradient(160deg, #ff4f78, #c21f4c);
+      linear-gradient(90deg, transparent 76px, var(--rib) 76px, var(--rib-dk) 104px, transparent 104px),
+      linear-gradient(160deg, var(--box-lt), var(--box-dk));
     border-radius: 4px;
   }
   .box:not(.opened) > .side { height: 146px; margin-top: -66px; }  /* walls stop under the closed lid */
-  .box > .front { transform: translateZ(90px); }
-  .box > .back  { transform: rotateY(180deg) translateZ(90px); --sh: .32; }
-  .box > .right { transform: rotateY(90deg)  translateZ(90px); --sh: .22; }
-  .box > .left  { transform: rotateY(-90deg) translateZ(90px); --sh: .12; }
+  .box > .side, .box > .inwall { transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(.5,0,.3,1.25); }
+  .box > .front { transform: translateZ(90px) rotateX(0deg); }
+  .box > .back  { transform: rotateY(180deg) translateZ(90px) rotateX(0deg); --sh: .32; }
+  .box > .right { transform: rotateY(90deg)  translateZ(90px) rotateX(0deg); --sh: .22; }
+  .box > .left  { transform: rotateY(-90deg) translateZ(90px) rotateX(0deg); --sh: .12; }
+  /* 'unfold' mode: the four walls fall outward, hinged at the floor */
+  .box.unfolded > .front { transform: translateZ(90px) rotateX(-90deg); }
+  .box.unfolded > .back  { transform: rotateY(180deg) translateZ(90px) rotateX(-90deg); transition-delay: .12s; }
+  .box.unfolded > .right { transform: rotateY(90deg)  translateZ(90px) rotateX(-90deg); transition-delay: .24s; }
+  .box.unfolded > .left  { transform: rotateY(-90deg) translateZ(90px) rotateX(-90deg); transition-delay: .36s; }
+  .box.unfolded > .in-front { transform: rotateY(180deg) translateZ(-89px) rotateX(90deg); }
+  .box.unfolded > .in-back  { transform: translateZ(-89px) rotateX(90deg); transition-delay: .12s; }
+  .box.unfolded > .in-right { transform: rotateY(270deg) translateZ(-89px) rotateX(90deg); transition-delay: .24s; }
+  .box.unfolded > .in-left  { transform: rotateY(90deg)  translateZ(-89px) rotateX(90deg); transition-delay: .36s; }
+
+  /* 'taps' mode: the box hops a little higher each tap */
+  .box.hop { animation: hop .55s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes hop {
+    0%   { transform: none; }
+    30%  { transform: translateY(calc(var(--hop, 20) * -1px)) rotateZ(calc(var(--tw, 6) * 1deg)) rotateX(calc(var(--tw, 6) * .6deg)); }
+    60%  { transform: translateY(0) rotateZ(calc(var(--tw, 6) * -1deg)); }
+    80%  { transform: rotateZ(calc(var(--tw, 6) * .4deg)); }
+    100% { transform: none; }
+  }
+  .burst {
+    position: fixed;
+    pointer-events: none;
+    z-index: 3;
+    font-size: 20px;
+    animation: burst 1s ease-out forwards;
+  }
+  @keyframes burst {
+    from { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
+    to   { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1) rotate(var(--r)); opacity: 0; }
+  }
 
   /* inner lining, only exists once the box is open */
   .box > .inwall {
     width: 178px; height: 160px;
     margin: -80px 0 0 -89px;
     backface-visibility: hidden;
-    background: linear-gradient(0deg, #6b0f2e, #b0204c 70%, #e04a72);
+    background: linear-gradient(0deg, var(--box-in3), var(--box-in2) 70%, var(--box-in1));
     display: none;
   }
   .box.opened > .inwall { display: block; }
-  .box > .in-front { transform: rotateY(180deg) translateZ(-89px); }
-  .box > .in-back  { transform: translateZ(-89px); }
-  .box > .in-right { transform: rotateY(270deg) translateZ(-89px); }
-  .box > .in-left  { transform: rotateY(90deg)  translateZ(-89px); }
+  .box > .in-front { transform: rotateY(180deg) translateZ(-89px) rotateX(0deg); }
+  .box > .in-back  { transform: translateZ(-89px) rotateX(0deg); }
+  .box > .in-right { transform: rotateY(270deg) translateZ(-89px) rotateX(0deg); }
+  .box > .in-left  { transform: rotateY(90deg)  translateZ(-89px) rotateX(0deg); }
 
   /* lid: 200 x 36 x 200 */
   .lid { position: absolute; transform: translateY(-86px); }   /* angle set in JS (hinged at the back edge) */
@@ -159,7 +195,7 @@
     width: 200px; height: 200px;
     margin: -100px 0 0 -100px;
     transform: translateY(18px) rotateX(90deg);
-    background: linear-gradient(135deg, #c42552, #7d1131);
+    background: linear-gradient(135deg, var(--under1), var(--under2));
     border-radius: 3px;
     display: none;
   }
@@ -169,8 +205,8 @@
     margin: -18px 0 0 -100px;
     background:
       linear-gradient(rgba(40,0,15,var(--sh,0)), rgba(40,0,15,var(--sh,0))),
-      linear-gradient(90deg, transparent 85px, #ffd36e 85px, #f3b33d 115px, transparent 115px),
-      linear-gradient(160deg, #ff6b8e, #e8335f);
+      linear-gradient(90deg, transparent 85px, var(--rib) 85px, var(--rib-dk) 115px, transparent 115px),
+      linear-gradient(160deg, var(--box-lt), var(--box));
     border-radius: 3px;
   }
   .lid .front { transform: translateZ(100px); }
@@ -181,9 +217,9 @@
     width: 200px; height: 200px;
     margin: -100px 0 0 -100px;
     background:
-      linear-gradient(90deg, transparent 85px, #ffd36e 85px, #f3b33d 115px, transparent 115px),
-      linear-gradient(0deg,  transparent 85px, #ffd36e 85px, #f3b33d 115px, transparent 115px),
-      linear-gradient(135deg, #ff7898, #e8335f);
+      linear-gradient(90deg, transparent 85px, var(--rib) 85px, var(--rib-dk) 115px, transparent 115px),
+      linear-gradient(0deg,  transparent 85px, var(--rib) 85px, var(--rib-dk) 115px, transparent 115px),
+      linear-gradient(135deg, var(--box-hi), var(--box));
     border-radius: 3px;
     transform: translateY(-18px) rotateX(90deg);
   }
@@ -216,7 +252,7 @@
     width: 177px; height: 177px;
     margin: -88.5px 0 0 -88.5px;
     transform: translateY(79px) rotateX(90deg);
-    background: radial-gradient(circle at 50% 45%, #8a1638, #4e0a22 80%);
+    background: radial-gradient(circle at 50% 45%, var(--floor1), var(--floor2) 80%);
     display: none;
   }
   .box.opened .floor { display: block; }
@@ -302,25 +338,13 @@
     backface-visibility: visible;
   }
   .r3d .lf { border-radius: 0; background: none; }
+  .r3d .tl { border-radius: 50% 50% 46% 46% / 78% 78% 22% 22%; }
+  .r3d .dz { border-radius: 50% 50% 50% 50% / 64% 64% 36% 36%; }
+  .r3d .sf { border-radius: 50% 50% 40% 40% / 80% 80% 20% 20%; }
+  .r3d .st { border-radius: 1px; }
   .r3d .lf svg { width: 100%; height: 100%; display: block; }
 
-  /* sound toggle */
-  .sound-btn {
-    position: fixed;
-    top: 16px; right: 16px;
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,.3);
-    background: rgba(255,255,255,.1);
-    backdrop-filter: blur(6px);
-    color: #fff;
-    font-size: 20px;
-    line-height: 1;
-    cursor: pointer;
-    z-index: 30;
-    transition: transform .2s, background .2s;
-  }
-  .sound-btn:hover { transform: scale(1.08); background: rgba(255,255,255,.18); }
+
   .petal-loose { position: absolute; left: 50%; top: 50%; pointer-events: none; }
 
   /* ---------- yes screen ---------- */
@@ -461,7 +485,6 @@
 
 <div class="hint" id="hint"><span class="line">A little something<br>for you… tap it 💌</span></div>
 
-<button class="sound-btn" id="soundBtn" aria-label="Mute sound" title="Sound on/off">🔊</button>
 <div class="hint-out" id="hintOut"></div>
 
 <div class="scene" id="scene">
@@ -523,8 +546,28 @@
 <script>
 /* =====================================================================
    ✏️  SETTINGS: change everything here (see README.md)
+   Tip: builder.html lets you change all of this without touching code.
    ===================================================================== */
+/*CONFIG-START*/
 const CONFIG = {
+
+  // ---- Gift box colours ---------------------------------------------------
+  box: {
+    color:  '#e8335f',      // the box and lid
+    ribbon: '#ffd36e',      // ribbon and bow
+  },
+
+  // ---- How the gift opens --------------------------------------------------
+  // 'scroll' : tap to open, then scroll / swipe / pinch to move into the box yourself
+  // 'taps'   : tap the box several times (see taps:), then it opens and glides in by itself
+  // 'auto'   : one tap, then it opens and glides in by itself
+  // 'hold'   : press and hold the box until it bursts open (see holdSeconds:)
+  // 'unfold' : one tap, the walls fall open flat, then the camera looks down inside
+  reveal: {
+    mode: 'scroll',
+    taps: 3,                // for 'taps'
+    holdSeconds: 1.5,       // for 'hold'
+  },
 
   // ---- Words on the page ------------------------------------------------
   text: {
@@ -539,6 +582,29 @@ const CONFIG = {
     yesSubtitle: "Happy Valentine's Day, my love 🌹",
   },
 
+  // ---- Flowers inside the box ---------------------------------------------
+  // type:  'rose' | 'tulip' | 'daisy' | 'sunflower' | 'sakura'
+  // x, y:  position on the box floor, from -88 (left/top) to 88 (right/bottom); 0,0 = centre
+  //        the note covers roughly x -66…66, y -76…76
+  // size:  about 20 (small) to 60 (big)
+  flowers: [
+    { type: 'rose',   color: '#e8335f', x: -60, y: -64, size: 40 },
+    { type: 'rose',   color: '#ff5c86', x: -30, y: -76, size: 35 },
+    { type: 'daisy',  color: '#ffffff', x: -70, y: -34, size: 34 },
+    { type: 'rose',   color: '#d81f4f', x:  62, y: -62, size: 38 },
+    { type: 'tulip',  color: '#ff7aa2', x:  30, y: -80, size: 34 },
+    { type: 'sakura', color: '#ffc3d6', x:  72, y: -30, size: 30 },
+    { type: 'rose',   color: '#ff7aa2', x: -60, y:  58, size: 40 },
+    { type: 'tulip',  color: '#e8335f', x: -36, y:  76, size: 34 },
+    { type: 'sakura', color: '#ffc3d6', x: -72, y:  36, size: 28 },
+    { type: 'rose',   color: '#e8335f', x:  60, y:  60, size: 40 },
+    { type: 'daisy',  color: '#ffffff', x:  34, y:  78, size: 32 },
+    { type: 'rose',   color: '#ff5c86', x:  72, y:  46, size: 32 },
+    { type: 'sakura', color: '#ffc3d6', x:   0, y:  82, size: 28 },
+    { type: 'rose',   color: '#d81f4f', x:   2, y: -82, size: 30 },
+  ],
+  loosePetals: true,        // a few petals scattered over the note
+
   // ---- Photos shown after they say "Yes" ---------------------------------
   // Put your pictures in the "photos" folder, then list them here.
   // Leave the list empty  ( photos: [] )  to skip the slideshow.
@@ -552,12 +618,12 @@ const CONFIG = {
 
   // ---- Sound -------------------------------------------------------------
   sound: {
-    startMuted: false,      // true = page starts silent (the 🔊 button turns it on)
+    music: 'builtin',       // 'builtin' = music box, 'none' = no music, or a file e.g. 'sounds/our-song.mp3'
     musicVolume: 0.85,      // 0 – 1
+    effects: true,          // false = no sound effects
     effectsVolume: 0.8,     // 0 – 1
-    // Your own sound files (mp3 / wav / ogg). Leave '' to use the built-in sounds.
+    // Your own sound effects (mp3 / wav / ogg). Leave '' to use the built-in ones.
     files: {
-      music:  '',           // background song, loops   e.g. 'sounds/our-song.mp3'
       open:   '',           // when the gift opens
       reveal: '',           // when you reach the note
       hover:  '',           // pointing at Yes / No
@@ -565,15 +631,8 @@ const CONFIG = {
       yes:    '',           // clicking Yes
     },
   },
-
-  // ---- Rose colours [outer, middle, dark centre] -------------------------
-  roseColors: [
-    ['#e8335f', '#c9244f', '#8f1234'],
-    ['#ff5c86', '#e8335f', '#a3163f'],
-    ['#d81f4f', '#b0153f', '#760c28'],
-    ['#ff7aa2', '#f0507f', '#b81d48'],
-  ],
 };
+/*CONFIG-END*/
 /* ===================================================================== */
 </script>
 
@@ -587,12 +646,50 @@ const CONFIG = {
   /* ---------- apply the words from CONFIG ---------- */
   const T = CONFIG.text;
   $('hint').innerHTML = `<span class="line">${T.tapHint}</span>`;
-  document.querySelector('.note h1').innerHTML = T.question;
+  {
+    // shrink the question so each line fits on the note and Yes / No stay visible
+    const h1 = document.querySelector('.note h1');
+    h1.innerHTML = T.question;
+    const lines = String(T.question).split(/<br\s*\/?>/i).map(x => x.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, '_'));
+    const longest = Math.max(1, ...lines.map(x => [...x].length));
+    const fs = Math.max(9, Math.min(19, 112 / (longest * .47), 50 / (1.05 * lines.length)));
+    h1.style.fontSize = fs.toFixed(1) + 'px';
+    h1.style.whiteSpace = 'nowrap';
+  }
   $('yesBtn').firstChild.textContent = T.yes + ' ';
   $('noBtn').firstChild.textContent = T.no + ' ';
   document.querySelector('.note .sig').textContent = T.signature;
   document.querySelector('.yay h2').textContent = T.yesTitle;
   document.querySelector('.yay p').textContent = T.yesSubtitle;
+
+  /* ---------- colours from CONFIG.box ---------- */
+  function hexToHsl(hex) {
+    let n = parseInt(String(hex).replace('#', '').padEnd(6, '0').slice(0, 6), 16);
+    let r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    let h = 0, sat = 0;
+    if (mx !== mn) {
+      const d = mx - mn;
+      sat = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h *= 60;
+    }
+    return [h, sat * 100, l * 100];
+  }
+  const hsl = (h, sa, l) => `hsl(${h.toFixed(1)}, ${clamp(sa, 0, 100).toFixed(1)}%, ${clamp(l, 2, 97).toFixed(1)}%)`;
+  const BOX = CONFIG.box || {};
+  const [bh, bs, bl] = hexToHsl(BOX.color || '#e8335f');
+  const [rh, rs, rl] = hexToHsl(BOX.ribbon || '#ffd36e');
+  {
+    const root = document.documentElement.style;
+    const set = (k, v) => root.setProperty(k, v);
+    set('--box-hi', hsl(bh, bs, bl + 14)); set('--box-lt', hsl(bh, bs, bl + 9));
+    set('--box', hsl(bh, bs, bl));         set('--box-dk', hsl(bh, bs, bl - 10));
+    set('--box-in1', hsl(bh, bs * .9, bl + 3)); set('--box-in2', hsl(bh, bs * .85, bl - 12)); set('--box-in3', hsl(bh, bs * .8, bl - 30));
+    set('--floor1', hsl(bh, bs * .75, bl - 24)); set('--floor2', hsl(bh, bs * .75, bl - 40));
+    set('--under1', hsl(bh, bs, bl - 8));  set('--under2', hsl(bh, bs, bl - 28));
+    set('--rib', hsl(rh, rs, rl));          set('--rib-dk', hsl(rh, rs, rl - 6));
+  }
 
   /* ---------- background hearts ---------- */
   const bg = $('bgHearts');
@@ -613,7 +710,7 @@ const CONFIG = {
 
   /* ---------- 3D bow ---------- */
   const bow = $('bow');
-  const gold = l => `hsl(42, 92%, ${l}%)`;
+  const gold = l => hsl(rh, rs, l + (rl - 71));   // ribbon colour, shaded
   const place = (el, w, h, t) => {
     el.style.width = w + 'px'; el.style.height = h + 'px';
     el.style.marginLeft = (-w / 2) + 'px'; el.style.marginTop = (-h / 2) + 'px';
@@ -649,7 +746,7 @@ const CONFIG = {
     d.className = 'seg';
     d.style.backfaceVisibility = 'visible';
     d.style.borderRadius = '50%';
-    d.style.background = 'radial-gradient(circle at 40% 35%, #ffe9ad, #f0b33a 60%, #c98a1c)';
+    d.style.background = `radial-gradient(circle at 40% 35%, ${hsl(rh, rs, rl + 15)}, ${hsl(rh, rs, rl - 13)} 60%, ${hsl(rh, rs, rl - 30)})`;
     place(d, 26, 26, `rotateY(${i * 15}deg)`);
     knot.appendChild(d);
   }
@@ -660,17 +757,24 @@ const CONFIG = {
     t.style.transform = `rotateY(${a}deg)`;
     const s = document.createElement('div');
     s.className = 'seg';
-    s.style.background = 'linear-gradient(90deg, #f3b33d, #ffd36e)';
+    s.style.background = 'linear-gradient(90deg, var(--rib-dk), var(--rib))';
     s.style.clipPath = 'polygon(0 0, 100% 0, 88% 50%, 100% 100%, 0 100%)';
     place(s, 70, 20, 'translate3d(38px, 0, 0) rotateX(90deg)');
     t.appendChild(s);
     bow.appendChild(t);
   });
 
-  /* ---------- 3D roses piled on the note ---------- */
-  const mix = (hex, t) => {               // blend a colour toward white
-    const n = parseInt(hex.slice(1), 16);
-    const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * t));
+  /* ---------- 3D flowers in the box ---------- */
+  const rgbOf = col => {                  // '#rrggbb', '#rgb' or 'rgb(r,g,b)' -> [r,g,b]
+    col = String(col).trim();
+    if (col.startsWith('rgb')) return col.match(/[\d.]+/g).slice(0, 3).map(Number);
+    let h = col.replace('#', '');
+    if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    const n = parseInt(h.padEnd(6, '0').slice(0, 6), 16) || 0;
+    return [n >> 16, (n >> 8) & 255, n & 255];
+  };
+  const mix = (col, t) => {               // blend a colour toward white (t > 0) or black (t < 0)
+    const c = rgbOf(col).map(v => Math.round(t >= 0 ? v + (255 - v) * t : v * (1 + t)));
     return `rgb(${c.join(',')})`;
   };
   function petal(parent, cls, w, h, angle, r, tilt, lift, bg) {
@@ -683,75 +787,119 @@ const CONFIG = {
     parent.appendChild(p);
     return p;
   }
-  function rose3D(S, [c1, c2, c3], seed) {
-    const g = document.createElement('div');
-    g.className = 'r3d';
-    const off = (seed * 53) % 360;
-    // leaves, almost flat
-    for (let i = 0; i < 3; i++) {
-      const lf = petal(g, 'pt lf', S * .3, S * .46, off + i * 120 + 20, S * .14, 10, 0);
+  function disc(parent, d, z, bg) {
+    const c = document.createElement('div');
+    c.className = 'pt';
+    c.style.cssText = `width:${d}px;height:${d}px;margin:${-d / 2}px 0 0 ${-d / 2}px;transform:translateZ(${z}px);border-radius:50%;background:${bg}`;
+    parent.appendChild(c);
+    return c;
+  }
+  function leaves(g, n, S, off, w, h, r, tilt) {
+    for (let i = 0; i < n; i++) {
+      const lf = petal(g, 'pt lf', S * w, S * h, off + i * (360 / n) + 20, S * r, tilt, 0);
       lf.innerHTML = `<svg viewBox="0 0 20 30" preserveAspectRatio="none"><path d="M10 30 C0 22 0 8 10 0 C20 8 20 22 10 30Z" fill="${i % 2 ? '#4f9d5b' : '#3f8a4c'}"/><path d="M10 29 L10 4" stroke="#2c6a37" stroke-width="1"/></svg>`;
     }
-    const grad = (c) => `linear-gradient(to top, ${c3} 0%, ${c} 50%, ${mix(c, .35)} 100%)`;
-    // outer ring: wide and open
-    for (let i = 0; i < 5; i++) petal(g, 'pt', S * .5, S * .44, off + i * 72, S * .05, 24, 1, grad(c1));
-    // middle ring: more upright
-    for (let i = 0; i < 5; i++) petal(g, 'pt', S * .4, S * .36, off + i * 72 + 36, S * .03, 50, 2, grad(c2));
-    // inner ring: nearly closed
-    for (let i = 0; i < 4; i++) petal(g, 'pt', S * .3, S * .27, off + i * 90 + 18, S * .015, 70, 3, grad(c1));
-    // bud in the centre
-    for (let i = 0; i < 3; i++) petal(g, 'pt', S * .2, S * .2, off + i * 120, 0, 84, 3, `linear-gradient(to top, ${c3}, ${c2})`);
-    const cap = document.createElement('div');
-    cap.className = 'pt';
-    cap.style.cssText = `width:${S * .14}px;height:${S * .14}px;margin:${-S * .07}px 0 0 ${-S * .07}px;transform:translateZ(${3 + S * .17}px);border-radius:50%;background:radial-gradient(${c3}, ${c2})`;
-    g.appendChild(cap);
+  }
+  const FLOWERS = {
+    rose: { reach: .62, build(g, S, c, off) {
+      const c2 = mix(c, -.12), c3 = mix(c, -.45);
+      leaves(g, 3, S, off, .3, .46, .14, 10);
+      const grad = k => `linear-gradient(to top, ${c3} 0%, ${k} 50%, ${mix(k, .35)} 100%)`;
+      for (let i = 0; i < 5; i++) petal(g, 'pt', S * .5, S * .44, off + i * 72, S * .05, 24, 1, grad(c));
+      for (let i = 0; i < 5; i++) petal(g, 'pt', S * .4, S * .36, off + i * 72 + 36, S * .03, 50, 2, grad(c2));
+      for (let i = 0; i < 4; i++) petal(g, 'pt', S * .3, S * .27, off + i * 90 + 18, S * .015, 70, 3, grad(c));
+      for (let i = 0; i < 3; i++) petal(g, 'pt', S * .2, S * .2, off + i * 120, 0, 84, 3, `linear-gradient(to top, ${c3}, ${c2})`);
+      disc(g, S * .14, 3 + S * .17, `radial-gradient(${c3}, ${c2})`);
+    }},
+    tulip: { reach: .66, build(g, S, c, off) {
+      const c3 = mix(c, -.45);
+      leaves(g, 2, S, off, .24, .6, .05, 14);
+      disc(g, S * .2, 1.5, c3);
+      const grad = k => `linear-gradient(to top, ${c3} 0%, ${k} 45%, ${mix(k, .3)} 100%)`;
+      for (let i = 0; i < 3; i++) petal(g, 'pt tl', S * .42, S * .55, off + i * 120, S * .07, 70, 1, grad(c));
+      for (let i = 0; i < 3; i++) petal(g, 'pt tl', S * .36, S * .5, off + 60 + i * 120, S * .02, 80, 1.5, grad(mix(c, -.1)));
+    }},
+    daisy: { reach: .6, build(g, S, c, off) {
+      leaves(g, 2, S, off, .26, .44, .12, 8);
+      for (let i = 0; i < 16; i++)
+        petal(g, 'pt dz', S * .13, S * .42, off + i * 22.5, S * .08, 10 + (i % 2) * 7, 1 + (i % 2) * .5,
+          `linear-gradient(to top, ${mix(c, -.25)}, ${c} 40%, ${c})`);
+      disc(g, S * .3, 2.2, 'radial-gradient(circle at 40% 40%, #ffd75e, #e8a317)');
+      disc(g, S * .2, 3.4, 'radial-gradient(circle at 40% 40%, #ffe07a, #f0b429)');
+      disc(g, S * .1, 4.4, '#ffe58f');
+    }},
+    sunflower: { reach: .6, build(g, S, c, off) {
+      leaves(g, 3, S, off, .32, .5, .2, 6);
+      for (let i = 0; i < 18; i++) petal(g, 'pt sf', S * .15, S * .36, off + i * 20, S * .18, 12, 1,
+        `linear-gradient(to top, ${mix(c, -.3)}, ${c} 35%, ${mix(c, .25)})`);
+      for (let i = 0; i < 16; i++) petal(g, 'pt sf', S * .13, S * .3, off + 10 + i * 22.5, S * .16, 26, 1.5,
+        `linear-gradient(to top, ${mix(c, -.35)}, ${mix(c, -.1)} 40%, ${c})`);
+      const seeds = 'radial-gradient(circle, #2e1a06 32%, transparent 36%) 0 0 / 4px 4px, radial-gradient(circle, #7a4a14, #3e2309)';
+      disc(g, S * .44, 2.6, seeds);
+      disc(g, S * .3, 3.6, seeds);
+    }},
+    sakura: { reach: .5, build(g, S, c, off, seed) {
+      leaves(g, 1, S, off + 30, .24, .36, .1, 6);
+      const id = 'sk' + seed;
+      for (let i = 0; i < 5; i++) {
+        const p = petal(g, 'pt lf', S * .42, S * .46, off + i * 72, S * .03, 26, 1);
+        p.innerHTML = `<svg viewBox="0 0 20 30" preserveAspectRatio="none"><defs><linearGradient id="${id}${i}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${mix(c, -.3)}"/><stop offset=".45" stop-color="${c}"/><stop offset="1" stop-color="${mix(c, .45)}"/></linearGradient></defs><path d="M10 30 C2 24 0 12 3 4 C5 1 8 1 10 5 C12 1 15 1 17 4 C20 12 18 24 10 30Z" fill="url(#${id}${i})"/></svg>`;
+      }
+      disc(g, S * .14, 1.8, mix(c, -.4));
+      for (let i = 0; i < 10; i++) petal(g, 'pt st', 1.3, S * .2, off + i * 36, S * .02, 55, 2,
+        `linear-gradient(to top, ${mix(c, -.45)}, ${mix(c, -.3)} 70%, #ffd34d 72%)`);
+    }},
+  };
+  function buildFlower(f, seed) {
+    const g = document.createElement('div');
+    g.className = 'r3d';
+    const kind = FLOWERS[f.type] || FLOWERS.rose;
+    kind.build(g, f.size, f.color || '#e8335f', (seed * 53) % 360, seed);
     return g;
   }
-  const palettes = CONFIG.roseColors;
-  // [x, y, size, height above note]: piled around the edges, leaving the words readable
-  const pile = [
-    [-60, -64, 48, 2], [-32, -76, 42, 6], [-70, -36, 40, 4], [-46, -48, 36, 9],
-    [ 64, -64, 44, 2], [ 30, -82, 38, 6], [ 72, -32, 40, 4],
-    [-62,  58, 48, 2], [-38,  76, 40, 6], [-70,  28, 38, 4],
-    [ 60,  60, 48, 2], [ 36,  78, 38, 6], [ 70,  28, 40, 4],
-    [  0,  82, 36, 3], [  2, -82, 34, 3],
-  ];
-  const rosesEl = $('roses');
-  pile.forEach(([x, y, size, h], i) => {
-    const S = size * .84;
-    // keep every petal and leaf inside the box walls (inner walls sit at ±89px)
-    const lim = 84 - S * .62;
-    x = clamp(x, -lim, lim); y = clamp(y, -lim, lim);
-    const r = rose3D(S, palettes[i % palettes.length], i + 1);
-    r.style.transform = `translate3d(${x}px, ${y}px, ${h + 1}px)`;
-    rosesEl.appendChild(r);
-  });
-  // a few loose petals drifting over the note
-  [[-20, -44, 30, 6], [26, -40, 140, 7], [-8, 40, 250, 8], [30, 22, 80, 7]].forEach(([x, y, a, h]) => {
-    const p = document.createElement('div');
-    p.className = 'petal-loose';
-    p.innerHTML = `<svg viewBox="0 0 20 14" width="11" height="8"><path d="M1 7 C4 0 15 0 19 7 C15 14 4 14 1 7Z" fill="#e8335f"/></svg>`;
-    place(p, 11, 8, `translate3d(${x}px, ${y}px, ${h}px) rotateZ(${a}deg)`);
-    rosesEl.appendChild(p);
-  });
 
+  const rosesEl = $('roses');
+  const placed = [];
+  (CONFIG.flowers || []).forEach((f0, i) => {
+    const f = Object.assign({ type: 'rose', color: '#e8335f', x: 0, y: 0, size: 36 }, f0);
+    f.size = clamp(+f.size || 36, 14, 70);
+    // keep every petal and leaf inside the box walls (inner walls sit at ±89px)
+    const lim = Math.max(0, 85 - f.size * (FLOWERS[f.type] || FLOWERS.rose).reach);
+    const x = clamp(+f.x || 0, -lim, lim), y = clamp(+f.y || 0, -lim, lim);
+    // flowers listed later sit on top of the ones they overlap
+    const under = placed.filter(p => Math.hypot(p.x - x, p.y - y) < (p.size + f.size) * .45).length;
+    const h = 1 + Math.min(under, 4) * 3;
+    placed.push({ x, y, size: f.size });
+    const el = buildFlower(f, i + 1);
+    el.style.transform = `translate3d(${x}px, ${y}px, ${h}px)`;
+    rosesEl.appendChild(el);
+  });
+  // a few loose petals scattered over the note
+  if (CONFIG.loosePetals !== false) {
+    const pc = (CONFIG.flowers && CONFIG.flowers[0] && CONFIG.flowers[0].color) || '#e8335f';
+    [[-20, -44, 30, 6], [26, -40, 140, 7], [-8, 40, 250, 8], [30, 22, 80, 7]].forEach(([x, y, a, h]) => {
+      const p = document.createElement('div');
+      p.className = 'petal-loose';
+      p.innerHTML = `<svg viewBox="0 0 20 14" width="11" height="8"><path d="M1 7 C4 0 15 0 19 7 C15 14 4 14 1 7Z" fill="${pc}"/></svg>`;
+      place(p, 11, 8, `translate3d(${x}px, ${y}px, ${h}px) rotateZ(${a}deg)`);
+      rosesEl.appendChild(p);
+    });
+  }
 
   /* ---------- sound (all generated live with Web Audio, no files) ---------- */
   const Sound = (() => {
     let ctx = null, master, music, sfx, noiseBuf, musicOn = false, timer = null;
-    const SC = CONFIG.sound, files = SC.files || {};
-    let muted = !!SC.startMuted, songEl = null;
-    try { const saved = localStorage.getItem('valentine-muted'); if (saved !== null) muted = saved === '1'; } catch (e) {}
-    const btn = $('soundBtn');
-    const paint = () => { btn.textContent = muted ? '🔇' : '🔊'; btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound'); };
-    paint();
+    const SC = Object.assign({ music: 'builtin', musicVolume: .85, effects: true, effectsVolume: .8 }, CONFIG.sound);
+    const files = SC.files || {};
+    if (files.music && (!SC.music || SC.music === 'builtin')) SC.music = files.music;   // older setting name
+    let songEl = null;
 
     function init() {
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       ctx = new AC();
-      master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
+      master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
       // a little room reverb
       const verb = ctx.createConvolver();
       const len = ctx.sampleRate * 2.2, ir = ctx.createBuffer(2, len, ctx.sampleRate);
@@ -825,12 +973,14 @@ const CONFIG = {
     function startMusic() {
       if (!ctx || musicOn) return;
       musicOn = true;
-      if (files.music) {                       // your own song instead of the music box
-        songEl = new Audio(files.music);
+      if (!SC.music || SC.music === 'none') return;
+      if (SC.music !== 'builtin') {            // your own song instead of the music box
+        songEl = new Audio(SC.music);
         songEl.loop = true;
-        songEl.volume = SC.musicVolume;
-        songEl.muted = muted;
+        songEl.volume = 0;
         songEl.play().catch(() => {});
+        let v = 0;                             // gentle fade-in
+        const fade = setInterval(() => { v = Math.min(SC.musicVolume, v + .04); songEl.volume = v; if (v >= SC.musicVolume) clearInterval(fade); }, 120);
         return;
       }
       next = ctx.currentTime + .1;
@@ -840,22 +990,14 @@ const CONFIG = {
       timer = setInterval(schedule, 60);
     }
 
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      init();
-      muted = !muted;
-      try { localStorage.setItem('valentine-muted', muted ? '1' : '0'); } catch (err) {}
-      if (master) master.gain.setTargetAtTime(muted ? 0 : .9, ctx.currentTime, .08);
-      if (songEl) songEl.muted = muted;
-      paint();
-    });
     window.addEventListener('pointerdown', init);
     window.addEventListener('keydown', init);
 
     const ok = () => ctx && ctx.state === 'running' || (ctx && ctx.resume(), !!ctx);
     function custom(name) {                    // play your own file for this moment, if you set one
+      if (!SC.effects) return true;            // effects switched off: skip the built-in one too
       if (!files[name]) return false;
-      if (!muted) { const a = new Audio(files[name]); a.volume = SC.effectsVolume; a.play().catch(() => {}); }
+      const a = new Audio(files[name]); a.volume = SC.effectsVolume; a.play().catch(() => {});
       return true;
     }
     return {
@@ -874,6 +1016,13 @@ const CONFIG = {
         noise(t, .08, 'highpass', 2000, 4000, .25);
         noise(t + .3, 1.2, 'bandpass', 300, 2400, .22, .8);
         [72, 76, 79, 84, 88].forEach((m, i) => bell(m + 12, t + .15 + i * .06, .07));
+      },
+      knock(n) {                                // 'taps' mode: each tap a little higher
+        if (!SC.effects || !ok()) return;
+        const t = ctx.currentTime;
+        noise(t, .06, 'bandpass', 900, 500, .3, 2);
+        bell(76 + n * 3, t + .02, .1);
+        bell(83 + n * 3, t + .1, .06);
       },
       reveal() {                                // you've reached the note
         if (custom('reveal')) return;
@@ -935,12 +1084,22 @@ const CONFIG = {
 
   let lastTransform = '', lastTime = performance.now();
   function tick(now) {
-    const dt = Math.min(0.1, (now - lastTime) / 1000); lastTime = now;
+    const realDt = Math.min(0.5, (now - lastTime) / 1000); lastTime = now;
+    const dt = Math.min(0.1, realDt);
     const k = 1 - Math.exp(-dt * 6);     // frame-rate independent smoothing
     const kz = 1 - Math.exp(-dt * 1.8);  // the zoom glides more slowly
     if (phase === 'closed') {
       if (!dragging) ry += 27 * dt;
-      setWorld(`rotateX(${rx}deg) rotateY(${ry}deg)`);
+      let jx = 0, jy = 0;
+      if (MODE === 'hold') {
+        charge = clamp(charge + (holding ? realDt / HOLD_SECS : -realDt * 1.2), 0, 1);
+        jx = (Math.random() - .5) * charge * 7; jy = (Math.random() - .5) * charge * 7;
+        box.style.transform = charge > 0 ? `scale(${1 + charge * .08})` : '';
+        const filled = Math.round(charge * 5);
+        if (filled !== lastFilled) { lastFilled = filled; setHoldHint(filled); }
+        if (charge >= 1) { holding = false; box.style.transform = ''; openGift(); }
+      }
+      setWorld(`rotateX(${rx + jx}deg) rotateY(${ry + jy}deg)`);
     } else {
       // auto-finish once they're most of the way in
       if (zoomT > 0.96) zoomT = 1;
@@ -1043,11 +1202,50 @@ const CONFIG = {
     tiltYT = clamp(e.gamma, -20, 20);
   });
 
-  /* ---------- open the gift ---------- */
+  /* ---------- open the gift (5 modes, see CONFIG.reveal) ---------- */
+  const RV = Object.assign({ mode: 'scroll', taps: 3, holdSeconds: 1.5 }, CONFIG.reveal);
+  const MODE = ['scroll', 'taps', 'auto', 'hold', 'unfold'].includes(RV.mode) ? RV.mode : 'scroll';
+  const HOLD_SECS = clamp(+RV.holdSeconds || 1.5, .4, 6);
+  let tapsLeft = clamp(Math.round(+RV.taps || 3), 1, 20);
+  let holding = false, charge = 0, lastFilled = -1;
+  const hintLine = T.tapHint;
+  function setHint(small) { hint.innerHTML = `<span class="line">${hintLine}</span>${small ? `<small>${small}</small>` : ''}`; }
+  function setHoldHint(n) { setHint((isTouch ? 'Press and hold the gift ' : 'Press and hold the gift ') + '💗'.repeat(n) + '🤍'.repeat(5 - n)); }
+  if (MODE === 'taps') setHint(`Tap it ${tapsLeft} time${tapsLeft > 1 ? 's' : ''} 💓`);
+  if (MODE === 'hold') setHoldHint(0);
+
+  function heartBurst(n) {                     // little hearts popping out of the box
+    const r = scene.getBoundingClientRect();
+    const sc = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--s')) || 1;
+    for (let i = 0; i < n; i++) {
+      const h = document.createElement('span');
+      h.className = 'burst';
+      h.textContent = ['💖', '💗', '💕', '✨'][i % 4];
+      const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 90;
+      h.style.left = r.left + 'px'; h.style.top = (r.top - 40 * sc) + 'px';
+      h.style.setProperty('--dx', Math.cos(a) * d + 'px');
+      h.style.setProperty('--dy', Math.sin(a) * d - 40 + 'px');
+      h.style.setProperty('--r', (Math.random() * 80 - 40) + 'deg');
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 1100);
+    }
+  }
+  function tapHop() {
+    const done = clamp(RV.taps, 1, 20) - tapsLeft;   // taps so far
+    box.style.setProperty('--hop', 14 + done * 10);
+    box.style.setProperty('--tw', 5 + done * 3);
+    box.classList.remove('hop'); void box.offsetWidth; box.classList.add('hop');
+    heartBurst(4 + done * 2);
+    Sound.knock(done);
+    setHint(`${tapsLeft} more time${tapsLeft > 1 ? 's' : ''} 💓`);
+  }
+
   let hintReady = false;
   function openGift() {
     if (phase !== 'closed') return;
     phase = 'opened';
+    box.classList.remove('hop');
+    if (MODE !== 'scroll') heartBurst(14);
     ry = ((ry % 360) + 540) % 360 - 180;
     rx = -30;
     box.classList.add('opened');
@@ -1056,20 +1254,35 @@ const CONFIG = {
     setTimeout(() => box.classList.add("gone"), 2100);
     $('ambient').classList.add('on');
     hint.style.opacity = 0;
-    setTimeout(() => {
+    const insideHint = () => {
       hintReady = true;
       hint.innerHTML = `<span class="line">${T.insideHint} <span class="arrow">🔍</span></span>
         <small>${isTouch ? 'Swipe up or pinch out to look closer' : 'Scroll down to look closer'}</small>`;
-    }, 1300);
+    };
+    if (MODE === 'scroll') { setTimeout(insideHint, 1300); return; }
+    // every other mode moves you in by itself (you can still scroll out and back in afterwards)
+    if (MODE === 'unfold') setTimeout(() => box.classList.add('unfolded'), 700);
+    setTimeout(() => { zoomT = 1; }, MODE === 'unfold' ? 2000 : 1200);
+    setTimeout(insideHint, 6000);
   }
   box.addEventListener('click', () => {
     if (moved > 8) return;
-    if (phase === 'closed') openGift();
+    if (phase === 'closed') {
+      if (MODE === 'hold') return;                                    // opened by holding instead
+      if (MODE === 'taps' && --tapsLeft > 0) { tapHop(); return; }
+      openGift();
+    }
     else if (phase === 'opened') zoomT = clamp(zoomT + 0.2, 0, 1);   // tap also moves you in
   });
+  box.addEventListener('pointerdown', () => { if (MODE === 'hold' && phase === 'closed') holding = true; });
+  window.addEventListener('pointerup', () => { holding = false; });
+  window.addEventListener('pointercancel', () => { holding = false; });
   box.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    if (phase === 'closed') openGift(); else if (phase === 'opened') zoomT = clamp(zoomT + .2, 0, 1);
+    if (phase === 'closed') {
+      if (MODE === 'taps' && --tapsLeft > 0) { tapHop(); return; }
+      openGift();
+    } else if (phase === 'opened') zoomT = clamp(zoomT + .2, 0, 1);
   });
 
   $('hintOut').textContent = isTouch ? '↓ Swipe down or pinch in to step back' : '↑ Scroll up to step back';

@@ -1,14 +1,42 @@
 # 💝 Valentine Gift Page
 
-A one-page Valentine surprise:
+A one-page 3D Valentine surprise. A gift box spins on a dark background, it opens with the animation you choose, and inside, 3D flowers lie on a handwritten note asking **"Will you be my Valentine?"** Pointing at an answer draws a pencil circle around it. Clicking **No** makes it shrink. Clicking **Yes** starts a celebration and then a slideshow of your photos. The music and sound effects are made by the page itself, or you can add your own song.
 
-1. A 3D gift box spins on a dark background.
-2. Tap it and the lid pops off and flies away.
-3. Scroll, swipe up or pinch to move into the box. Inside, 3D roses lie piled on a handwritten note: **"Will you be my Valentine?"**
-4. Point at an answer and a pencil circle is drawn around it. Clicking **No** makes "No" shrink and "Yes" grow.
-5. **Yes** shows a celebration, then a slideshow of your own photos.
+---
 
-Music and sound effects are made by the code itself, so there are no audio files to download (you can add your own songs if you like). There's a 🔊 button to mute.
+## 🚀 The easy way: `builder.html`
+
+Double-click **`builder.html`** to open it in your browser. Everything is set up on that page with no code:
+
+| Section | What you choose |
+|---|---|
+| 1. Gift box | Box colour and ribbon/bow colour (with a spinning 3D preview) |
+| 2. How it opens | The 3D opening animation (see below) |
+| 3. The note & messages | The question, Yes/No text, what "No" turns into, the signature and the messages after "Yes" |
+| 4. Flowers in the box | Drag flowers around the bottom of the box. There are 5 types: **rose, tulip, daisy, sunflower, cherry blossom**. Click a flower to change its type, colour and size, put it on top or underneath, copy it or remove it. Quick layouts fill the box for you |
+| 5. Music & sound | Built-in music-box melody, **your own song** (mp3), or no music. You can also turn sound effects off and set the volumes |
+| 6. Photos | Choose or drop photos and add a caption to each. ◀ ▶ changes the order |
+
+Then use the buttons at the bottom:
+
+- **👀 Preview** lets you try it right there, on a computer-sized or phone-sized screen.
+- **⬇️ Download index.html** saves **one file** with your photos and song packed inside. Send that file, or put it online (see below).
+- **📂 Open a page I made** loads an `index.html` you downloaded before, so you can change it.
+- **↺ Start over** goes back to the default settings.
+
+The builder remembers your settings in that browser. Big photos and songs may not fit in its memory, so keep your downloaded `index.html` and reopen it with **📂 Open a page I made** to continue later.
+
+### The 5 opening animations
+
+| Mode | What happens |
+|---|---|
+| 🔍 **Scroll in** | Tap to open, then scroll, swipe up or pinch to move into the box yourself |
+| 👆 **Tap several times** | The box hops higher with a burst of hearts on each tap. On the last tap it opens and the camera glides in. You choose the number of taps |
+| ✨ **One tap** | One tap, then the lid flies off and the camera glides in by itself |
+| 💗 **Press & hold** | Hold the gift while hearts fill up and it shakes harder, then it bursts open. You choose the number of seconds |
+| 📦 **Unfold** | One tap, then the four walls fall open flat and the camera looks down inside |
+
+In every mode, scrolling up (or swiping down) steps back out, and scrolling down goes back in.
 
 ---
 
@@ -16,136 +44,74 @@ Music and sound effects are made by the code itself, so there are no audio files
 
 ```
 lover/
-├── index.html      ← the whole website (design, animation, sound, settings)
-├── photos/         ← put your pictures here
-│   ├── photo1.jpg
-│   ├── photo2.jpg
-│   └── photo3.jpg
-├── sounds/         ← (optional) create this folder for your own mp3 files
-└── README.md       ← this guide
+├── builder.html        ← the settings page (open this to make your gift)
+├── index.html          ← the gift page itself (the builder downloads a new one)
+├── photos/             ← sample photos used by the default index.html
+├── tools/
+│   ├── builder.src.html  ← source of builder.html
+│   └── make-builder.py   ← rebuilds builder.html after you edit index.html's code
+└── README.md
 ```
-
-## ▶️ How to open it
-
-Double-click `index.html` to open it in your browser. To see it on a phone or share it, put it online with [GitHub Pages](#-put-it-online-github-pages) (below).
 
 ---
 
-## ✏️ Customizing: everything is in one place
+## ✏️ Changing things by hand (optional)
 
-Open `index.html` in any text editor (VS Code, Notepad…). Search (**Ctrl + F**) for:
+Everything the builder sets is in one block near the top of `index.html`'s `<script>`. Search (**Ctrl + F**) for:
 
 ```
 SETTINGS: change everything here
 ```
 
-It's near the start of the `<script>` part (around **line 525**). Everything below is inside the `CONFIG = { … }` block there. You only change the values on the right side, and you keep the quotes `' '`.
-
-### 1. Words / messages → `text:`
-
-| Setting | Where it shows |
-|---|---|
-| `tapHint` | Above the closed gift ("tap it 💌") |
-| `insideHint` | After the gift opens ("Something's inside…") |
-| `question` | On the note. `<br>` starts a new line |
-| `yes` / `no` | The two answers |
-| `noReplies` | What "No" turns into each time it's clicked |
-| `signature` | Small text at the bottom of the note |
-| `yesTitle` / `yesSubtitle` | Big message after clicking Yes |
-
-Example:
-```js
-question: 'Will you go out<br>with me, Mint?',
-```
-
-> If your text has an apostrophe (like *Valentine's*), wrap it in double quotes: `"Valentine's Day"`.
-
-### 2. Photos → `photos:`
-
-1. Copy your pictures into the **`photos`** folder (`.jpg`, `.png` or `.webp`). Square or portrait photos look best.
-2. List them in `photos:`, one line each, with a caption:
-
-```js
-photos: [
-  { src: 'photos/first-date.jpg', caption: 'Our first date 💕' },
-  { src: 'photos/beach.jpg',      caption: 'Hua Hin, 2025 🌊' },
-  { src: 'photos/us.png',         caption: 'Forever ✨' },
-],
-```
-
-- You can list as many photos as you want, and they play in the order listed.
-- `slideSeconds: 4` sets how long each photo stays on screen.
-- `photosDelay: 2.5` sets how many seconds after "Yes" the photos appear.
-- To have no slideshow, use `photos: [],`
-- If a photo shows *"📷 Photo not found"*, the file name in `src` doesn't match the file. Check the spelling, the upper/lower case, and the extension (`.jpg` vs `.jpeg`).
-- The three included photos are placeholders. Replace them, or delete them and list your own.
-
-### 3. Sound → `sound:`
+It's around **line 548**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
 
 | Setting | What it does |
 |---|---|
-| `startMuted: true` | The page starts silent, and the 🔊 button turns sound on |
-| `musicVolume` | Background music volume, `0` (silent) to `1` (full) |
-| `effectsVolume` | Sound-effects volume, `0` to `1` |
+| `box.color`, `box.ribbon` | Box and ribbon colours, for example `'#3a7bd5'` |
+| `reveal.mode` | `'scroll'`, `'taps'`, `'auto'`, `'hold'` or `'unfold'` |
+| `reveal.taps` / `reveal.holdSeconds` | Number of taps for "taps", seconds to hold for "hold" |
+| `text.*` | All the words. `<br>` makes a new line. A long question shrinks automatically to fit the note |
+| `flowers` | A list like `{ type: 'rose', color: '#e8335f', x: -60, y: -64, size: 40 }`. Types are `rose`, `tulip`, `daisy`, `sunflower` and `sakura`. `x`/`y` go from -88 to 88 (0,0 is the centre). Flowers can never poke through the box walls |
+| `loosePetals` | `true` or `false`: scattered petals on the note |
+| `photos` | `{ src: 'photos/me.jpg', caption: '…' }`. File names are case-sensitive online |
+| `slideSeconds`, `photosDelay` | Slideshow timing |
+| `sound.music` | `'builtin'`, `'none'`, or a file such as `'sounds/our-song.mp3'` |
+| `sound.effects` | `false` turns off the pop, chime and pencil sounds |
+| `sound.files.open / reveal / hover / no / yes` | Your own mp3 for any one sound effect (`''` keeps the built-in sound) |
 
-**Use your own song or sound effects:** make a folder called `sounds`, put your mp3 files in it, and write the file names in `files:`:
+> Pages downloaded from the builder have the same block, without the comments, and photos and songs are stored as long `data:` text. It's easier to change those pages with **📂 Open a page I made** in the builder.
 
-```js
-files: {
-  music:  'sounds/our-song.mp3',   // background song (loops)
-  open:   'sounds/pop.mp3',        // gift opens
-  reveal: '',                      // reaching the note   ('' = built-in sound)
-  hover:  '',                      // pointing at Yes / No
-  no:     'sounds/sad.mp3',        // clicking No
-  yes:    'sounds/yay.mp3',        // clicking Yes
-},
+### Going further (code)
+
+| What | Search `index.html` for |
+|---|---|
+| Background glow colours | `--bg1:` |
+| How each flower type is built in 3D | `const FLOWERS = {` |
+| The built-in melody | `const chords =` (60 = middle C; `const beat = 60 / 72` sets the speed, 72 beats per minute) |
+| Scroll zoom speed | `0.0011` |
+| How the lid flies away | `@keyframes lidAway` |
+| Confetti emojis after "Yes" | `const pieces = [` |
+
+If you change the **code** of `index.html` (not just the settings), run this so the builder uses your new version:
+
+```bash
+python tools/make-builder.py
 ```
-
-Any setting left as `''` keeps the built-in sound.
-
-> Browsers don't allow sound until the visitor taps or clicks something, so the page is silent until the gift is clicked. That's normal.
->
-> The 🔊 button remembers its setting in that browser. If you're testing `startMuted` and nothing changes, click 🔊 once, or open the page in a private window.
-
-### 4. Rose colours → `roseColors:`
-
-Each line is one rose colour: `[outer petals, middle petals, dark centre]`. Use any colour codes, for example from [htmlcolorcodes.com](https://htmlcolorcodes.com):
-
-```js
-roseColors: [
-  ['#ffffff', '#f3e6ea', '#d9b8c2'],   // white roses
-  ['#e8335f', '#c9244f', '#8f1234'],   // red roses
-],
-```
-
----
-
-## 🛠️ Going further (optional, for when you're comfortable with code)
-
-Search `index.html` for these words:
-
-| What | Search for | Notes |
-|---|---|---|
-| Background colours | `--bg1:` (top of the file) | `--bg1`, `--bg2` = the pink/purple glow after opening |
-| Where the roses lie | `const pile = [` | Each rose is `[x, y, size, height]`. They're automatically kept inside the box |
-| The built-in music melody | `const chords =` | Notes are MIDI numbers (60 = middle C). `order` = chord order, `tops` = melody notes. Change `const beat = 60 / 72` (72 = beats per minute) to change the speed |
-| How fast scrolling zooms in | `0.0011` | Bigger number = faster zoom |
-| How the lid flies away | `@keyframes lidAway` | The end position and spin of the lid |
-| Celebration confetti | `const pieces = [` | The emojis that fall after "Yes" |
 
 ---
 
 ## 🌐 Put it online (GitHub Pages)
 
-1. Push your changes:
+1. Put the `index.html` you downloaded from the builder into this folder, replacing the old one.
+2. Push:
    ```bash
    git add .
-   git commit -m "My photos and message"
+   git commit -m "My Valentine gift"
    git push
    ```
-2. On GitHub, open the repo → **Settings** → **Pages**.
-3. Under *Branch*, choose **main** and **/ (root)**, then **Save**.
-4. After about a minute you'll get a link like
-   `https://mrdewdotcom.github.io/Valentine/`. Send it to your Valentine 💌
+3. On GitHub, open the repo → **Settings** → **Pages** → Branch **main**, **/ (root)** → **Save**.
+4. After about a minute your link is ready: `https://mrdewdotcom.github.io/Valentine/` 💌
 
-> Photo names on GitHub Pages are case-sensitive: `Photo1.JPG` ≠ `photo1.jpg`.
+> `builder.html` will also be online at `…/Valentine/builder.html`. If you don't want anyone to find it, keep it only on your computer (remove it from git with `git rm --cached builder.html`).
+>
+> Browsers only allow sound after the first tap or click, so the music starts when the gift is opened.
