@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>For You 💝</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&family=Quicksand:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&family=Quicksand:wght@500;600&family=Charm:wght@700&family=Sriracha&family=Mitr:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg1: #1e0716;
@@ -23,7 +23,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
-    font-family: 'Quicksand', sans-serif;
+    font-family: 'Quicksand', 'Mitr', sans-serif;
     background: #07020a;
     color: var(--cream);
     overflow: hidden;
@@ -65,7 +65,7 @@
   .hint {
     position: fixed;
     top: 9vh; left: 0; right: 0;
-    font-family: 'Dancing Script', cursive;
+    font-family: 'Dancing Script', 'Charm', cursive;
     font-size: 2.1rem;
     line-height: 1.15;
     text-align: center;
@@ -78,7 +78,7 @@
   .hint small {
     display: block;
     margin-top: 10px;
-    font-family: 'Quicksand', sans-serif;
+    font-family: 'Quicksand', 'Mitr', sans-serif;
     font-size: .95rem;
     opacity: .75;
   }
@@ -280,7 +280,7 @@
     background: rgba(232,51,95,.35);
   }
   .note h1 {
-    font-family: 'Dancing Script', cursive;
+    font-family: 'Dancing Script', 'Charm', cursive;
     font-weight: 700;
     font-size: 19px;
     line-height: 1.05;
@@ -289,7 +289,7 @@
   .options { display: flex; justify-content: center; align-items: center; gap: 6px; padding-left: 8px; }
   .opt {
     position: relative;
-    font-family: 'Caveat', 'Dancing Script', cursive;
+    font-family: 'Caveat', 'Sriracha', cursive;
     font-weight: 700;
     font-size: 17px;
     color: #6b1530;
@@ -323,7 +323,7 @@
   .opt:focus { outline: none; }
   .note .sig {
     margin-top: 8px;
-    font-family: 'Caveat', cursive;
+    font-family: 'Caveat', 'Sriracha', cursive;
     font-size: 11px;
     opacity: .7;
   }
@@ -377,7 +377,7 @@
   }
   @keyframes spinHeart { to { transform: rotateY(360deg); } }
   .yay h2 {
-    font-family: 'Dancing Script', cursive;
+    font-family: 'Dancing Script', 'Charm', cursive;
     font-size: clamp(2.4rem, 10vw, 3.6rem);
     color: #fff;
     text-shadow: 0 0 20px rgba(255,111,165,.8);
@@ -438,7 +438,7 @@
     color: #ffb3cc; text-align: center; font-size: .9rem; padding: 10px;
   }
   .polaroid .cap {
-    font-family: 'Caveat', 'Dancing Script', cursive;
+    font-family: 'Caveat', 'Sriracha', cursive;
     font-weight: 700;
     font-size: clamp(1.3rem, 5.5vw, 1.7rem);
     color: #6b1530;
@@ -478,9 +478,16 @@
   }
   .start.gone { opacity: 0; pointer-events: none; }
   .start[hidden] { display: none; }
+  /* Thai: room for vowels and tone marks above/below the letters */
+  html[lang=th] .note h1 { line-height: 1.32; margin-bottom: 8px; }
+  html[lang=th] .note { padding-top: 22px; }
+  html[lang=th] .opt { font-size: 14px; }
+  html[lang=th] .note .sig { font-size: 10px; margin-top: 4px; }
+  html[lang=th] .hint { line-height: 1.4; }
+  html[lang=th] .yay h2, html[lang=th] .polaroid .cap { line-height: 1.35; }
   .start .in { text-align: center; animation: fadeIn 1s ease both; }
   .start .big { font-size: 64px; display: inline-block; animation: beat 1.6s ease-in-out infinite; filter: drop-shadow(0 0 18px rgba(255,111,165,.7)); }
-  .start p { font-family: 'Dancing Script', cursive; font-size: 2.2rem; margin-top: 10px; text-shadow: 0 0 18px rgba(255,111,165,.6); }
+  .start p { font-family: 'Dancing Script', 'Charm', cursive; font-size: 2.2rem; margin-top: 10px; text-shadow: 0 0 18px rgba(255,111,165,.6); }
   .start small { display: block; margin-top: 8px; opacity: .65; }
 
   .confetti {
@@ -572,6 +579,9 @@
    ===================================================================== */
 /*CONFIG-START*/
 const CONFIG = {
+
+  // ---- Language of the page's built-in hints: 'en' (English) or 'th' (ไทย) -----
+  lang: 'en',
 
   // ---- Gift box colours ---------------------------------------------------
   box: {
@@ -703,6 +713,36 @@ const CONFIG = {
   const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const isTouch = matchMedia('(pointer: coarse)').matches;
 
+  /* ---------- built-in hints in English / Thai ---------- */
+  const LANG = CONFIG.lang === 'th' ? 'th' : 'en';
+  const L = {
+    en: {
+      title: 'For You 💝',
+      tapN: n => `Tap it ${n} time${n > 1 ? 's' : ''} 💓`,
+      moreN: n => `${n} more time${n > 1 ? 's' : ''} 💓`,
+      hold: 'Press and hold the gift ',
+      closerTouch: 'Swipe up or pinch out to look closer', closerMouse: 'Scroll down to look closer',
+      backTouch: '↓ Swipe down or pinch in to step back', backMouse: '↑ Scroll up to step back',
+      soundOn: '🔊 sound on', noPhoto: '📷 Photo not found:', startDefault: 'Tap to begin',
+      openGift: 'Open the gift', prev: 'Previous photo', next: 'Next photo',
+    },
+    th: {
+      title: 'ของขวัญให้เธอ 💝',
+      tapN: n => `แตะ ${n} ครั้งนะ 💓`,
+      moreN: n => `อีก ${n} ครั้ง 💓`,
+      hold: 'กดค้างที่กล่องไว้นะ ',
+      closerTouch: 'ปัดขึ้นหรือถ่างนิ้วเพื่อดูใกล้ๆ', closerMouse: 'เลื่อนลงเพื่อดูใกล้ๆ',
+      backTouch: '↓ ปัดลงหรือบีบนิ้วเพื่อถอยออกมา', backMouse: '↑ เลื่อนขึ้นเพื่อถอยออกมา',
+      soundOn: '🔊 เปิดเสียงด้วยนะ', noPhoto: '📷 หารูปไม่เจอ:', startDefault: 'แตะเพื่อเริ่ม',
+      openGift: 'เปิดของขวัญ', prev: 'รูปก่อนหน้า', next: 'รูปถัดไป',
+    },
+  }[LANG];
+  document.documentElement.lang = LANG;
+  document.title = L.title;
+  document.querySelector('.start small').textContent = L.soundOn;
+  $('box').setAttribute('aria-label', L.openGift);
+  $('galPrev').setAttribute('aria-label', L.prev); $('galNext').setAttribute('aria-label', L.next);
+
   /* ---------- apply the words from CONFIG ---------- */
   const T = CONFIG.text;
   $('hint').innerHTML = `<span class="line">${T.tapHint}</span>`;
@@ -712,7 +752,8 @@ const CONFIG = {
     h1.innerHTML = T.question;
     const lines = String(T.question).split(/<br\s*\/?>/i).map(x => x.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, '_'));
     const longest = Math.max(1, ...lines.map(x => [...x].length));
-    const fs = Math.max(9, Math.min(19, 112 / (longest * .47), 50 / (1.05 * lines.length)));
+    const lineH = LANG === 'th' ? 1.32 : 1.05;                     // Thai lines are taller
+    const fs = Math.max(9, Math.min(19, 112 / (longest * .47), (LANG === 'th' ? 42 : 50) / (lineH * lines.length)));
     h1.style.fontSize = fs.toFixed(1) + 'px';
     h1.style.whiteSpace = 'nowrap';
   }
@@ -1515,8 +1556,8 @@ const CONFIG = {
   box.addEventListener('pointerdown', hideHintWhileTouching);
   window.addEventListener('pointerup', () => { if (phase === 'closed' && hint.style.opacity === '0') showHintSoon(); });
   window.addEventListener('pointercancel', () => { if (phase === 'closed' && hint.style.opacity === '0') showHintSoon(); });
-  function setHoldHint(n) { setHint((isTouch ? 'Press and hold the gift ' : 'Press and hold the gift ') + '💗'.repeat(n) + '🤍'.repeat(5 - n)); }
-  if (MODE === 'taps') setHint(`Tap it ${tapsLeft} time${tapsLeft > 1 ? 's' : ''} 💓`);
+  function setHoldHint(n) { setHint(L.hold + '💗'.repeat(n) + '🤍'.repeat(5 - n)); }
+  if (MODE === 'taps') setHint(L.tapN(tapsLeft));
   if (MODE === 'hold') setHoldHint(0);
 
   function heartBurst(n) {                     // little hearts popping out of the box
@@ -1542,7 +1583,7 @@ const CONFIG = {
     box.classList.remove('hop'); void box.offsetWidth; box.classList.add('hop');
     heartBurst(4 + done * 2);
     Sound.knock(done);
-    setHint(`${tapsLeft} more time${tapsLeft > 1 ? 's' : ''} 💓`);
+    setHint(L.moreN(tapsLeft));
   }
 
   let hintReady = false;
@@ -1563,7 +1604,7 @@ const CONFIG = {
     const insideHint = () => {
       hintReady = true;
       hint.innerHTML = `<span class="line">${T.insideHint} <span class="arrow">🔍</span></span>
-        <small>${isTouch ? 'Swipe up or pinch out to look closer' : 'Scroll down to look closer'}</small>`;
+        <small>${isTouch ? L.closerTouch : L.closerMouse}</small>`;
     };
     if (MODE === 'scroll') { setTimeout(insideHint, 1300); return; }
     // every other mode moves you in by itself (you can still scroll out and back in afterwards)
@@ -1597,12 +1638,12 @@ const CONFIG = {
     Sound.autoStart().then(ok => {
       if (ok) return;
       const st = $('startScreen');
-      $('startText').textContent = T.startHint || 'Tap to begin';
+      $('startText').textContent = T.startHint || L.startDefault;
       st.hidden = false;
       st.addEventListener('click', () => { Sound.onStart(); st.classList.add('gone'); setTimeout(() => st.remove(), 1000); }, { once: true });
     });
   }
-  $('hintOut').textContent = isTouch ? '↓ Swipe down or pinch in to step back' : '↑ Scroll up to step back';
+  $('hintOut').textContent = isTouch ? L.backTouch : L.backMouse;
   function enterInside() {
     phase = 'inside';
     box.classList.add('inside');
@@ -1617,7 +1658,8 @@ const CONFIG = {
   /* ---------- answers ---------- */
   const yesBtn = $('yesBtn'), noBtn = $('noBtn');
   const noTexts = [T.no, ...T.noReplies];
-  let noCount = 0, yesSize = 17;
+  const OPT = LANG === 'th' ? 14 : 17;              // starting size of Yes / No
+  let noCount = 0, yesSize = OPT;
   [yesBtn, noBtn].forEach(b => b.addEventListener('pointerenter', e => {
     if (e.pointerType === 'mouse' && phase === 'inside') Sound.scribble();
   }));
@@ -1626,9 +1668,9 @@ const CONFIG = {
     Sound.no();
     noCount++;
     noBtn.firstChild.textContent = noTexts[Math.min(noCount, noTexts.length - 1)] + ' ';
-    yesSize = Math.min(yesSize + 1.5, 23);
+    yesSize = Math.min(yesSize + 1.5, OPT + 6);
     yesBtn.style.fontSize = yesSize + 'px';
-    noBtn.style.fontSize = Math.max(17 - noCount, 12) + 'px';
+    noBtn.style.fontSize = Math.max(OPT - noCount, OPT - 5) + 'px';
   });
   yesBtn.addEventListener('click', e => {
     e.stopPropagation();
@@ -1653,7 +1695,7 @@ const CONFIG = {
       pic.className = 'pic';
       const img = new Image();
       img.onload = () => { pic.style.backgroundImage = `url("${ph.src}")`; };
-      img.onerror = () => { pic.textContent = `📷 Photo not found: ${ph.src}`; };
+      img.onerror = () => { pic.textContent = `${L.noPhoto} ${ph.src}`; };
       img.src = ph.src;
       const cap = document.createElement('figcaption');
       cap.className = 'cap';

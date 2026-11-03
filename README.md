@@ -1,18 +1,20 @@
 # 💝 Valentine Gift Page
 
+🇹🇭 อ่านภาษาไทย: [README.th.md](README.th.md)
+
 A one-page 3D Valentine surprise. A gift box spins on a dark background, it opens with the animation you choose, and inside, 3D flowers lie on a handwritten note asking **"Will you be my Valentine?"** Pointing at an answer draws a pencil circle around it. Clicking **No** makes it shrink. Clicking **Yes** starts a celebration and then a slideshow of your photos. The music and sound effects are made by the page itself, or you can add your own song.
 
 ---
 
 ## 🚀 The easy way: `builder.html`
 
-Double-click **`builder.html`** to open it in your browser. Everything is set up on that page with no code:
+Double-click **`builder.html`** to open it in your browser. Everything is set up on that page with no code. The **ไทย / EN** switch in the top-right corner changes the settings page's language:
 
 | Section | What you choose |
 |---|---|
 | 1. Gift box | Box colour and ribbon/bow colour (with a spinning 3D preview) |
 | 2. How it opens | The 3D opening animation (see below) |
-| 3. The note & messages | The question, Yes/No text, what "No" turns into, the signature and the messages after "Yes" |
+| 3. The note & messages | The **language of the page's hints** (English or ไทย, with example text in that language), the question, Yes/No text, what "No" turns into, the signature and the messages after "Yes" |
 | 4. Flowers in the box | Drag flowers around the bottom of the box. There are 5 types: **rose, tulip, daisy, sunflower, cherry blossom**. Click a flower to change its type, colour and size, put it on top or underneath, copy it or remove it. Quick layouts fill the box for you. Flowers can overlap: one added later rests and leans on top of the others, and never passes through them |
 | 5. Behind the note | What lies on the bottom of the box around the note: **rose petals, paper hearts, confetti, crinkle paper** or nothing. Also its colour, how much there is, and the floor colour |
 | 6. Music & sound | Upload your songs once, then pick a music plan (see below). You can also turn sound effects off and set the volumes |
@@ -76,10 +78,11 @@ Everything the builder sets is in one block near the top of `index.html`'s `<scr
 SETTINGS: change everything here
 ```
 
-It's around **line 570**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
+It's around **line 577**, inside `const CONFIG = { … }`. In the default `index.html` each setting has a comment explaining it.
 
 | Setting | What it does |
 |---|---|
+| `lang` | `'en'` or `'th'`: language of the built-in hints ("Scroll down to look closer", "Tap to begin"…). Thai uses Thai-friendly fonts |
 | `box.color`, `box.ribbon` | Box and ribbon colours, for example `'#3a7bd5'` |
 | `reveal.mode` | `'scroll'`, `'taps'`, `'auto'`, `'hold'` or `'unfold'` |
 | `reveal.taps` / `reveal.holdSeconds` | Number of taps for "taps", seconds to hold for "hold" |
@@ -134,4 +137,4 @@ python tools/make-builder.py
 
 > `builder.html` will also be online at `…/Valentine/builder.html`. If you don't want anyone to find it, keep it only on your computer (remove it from git with `git rm --cached builder.html`).
 >
-> Browsers only allow sound after the first tap or click, so the music starts when the gift is opened.
+> Browsers only allow sound after the first tap, so when music should play before the gift opens, visitors see a "Tap to begin" screen first.
