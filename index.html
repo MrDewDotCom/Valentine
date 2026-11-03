@@ -465,6 +465,24 @@
   .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.35); transition: background .3s, transform .3s; }
   .dots i.on { background: #ff7eb0; transform: scale(1.3); }
 
+  /* "Tap to begin" screen (only when music should play before the gift opens) */
+  .start {
+    position: fixed; inset: 0;
+    z-index: 40;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(40,8,28,.82), rgba(5,1,6,.96));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    cursor: pointer;
+    transition: opacity .9s ease;
+  }
+  .start.gone { opacity: 0; pointer-events: none; }
+  .start[hidden] { display: none; }
+  .start .in { text-align: center; animation: fadeIn 1s ease both; }
+  .start .big { font-size: 64px; display: inline-block; animation: beat 1.6s ease-in-out infinite; filter: drop-shadow(0 0 18px rgba(255,111,165,.7)); }
+  .start p { font-family: 'Dancing Script', cursive; font-size: 2.2rem; margin-top: 10px; text-shadow: 0 0 18px rgba(255,111,165,.6); }
+  .start small { display: block; margin-top: 8px; opacity: .65; }
+
   .confetti {
     position: fixed; top: -40px;
     pointer-events: none;
@@ -488,6 +506,7 @@
 <div class="hint" id="hint"><span class="line">A little something<br>for you… tap it 💌</span></div>
 
 <div class="hint-out" id="hintOut"></div>
+<div class="start" id="startScreen" hidden><div class="in"><span class="big">💌</span><p id="startText"></p><small>🔊 sound on</small></div></div>
 
 <div class="scene" id="scene">
   <div class="scaler">
@@ -583,6 +602,7 @@ const CONFIG = {
     signature:   '— with all my love',
     yesTitle:    'Yay! I love you!',
     yesSubtitle: "Happy Valentine's Day, my love 🌹",
+    startHint:   'Tap to begin',        // only shown when music should play before the gift opens
   },
 
   // ---- Flowers inside the box ---------------------------------------------
@@ -628,7 +648,37 @@ const CONFIG = {
 
   // ---- Sound -------------------------------------------------------------
   sound: {
-    music: 'builtin',       // 'builtin' = music box, 'none' = no music, or a file e.g. 'sounds/our-song.mp3'
+    // Music plan:
+    //  'simple' : one music for the whole page (see music:)
+    //  'hook'   : one song plays softly, slowly fades away while they think, and jumps to the hook on "Yes" (see hook:)
+    //  'stages' : different music before opening / after opening / after "Yes" (see stages:)
+    plan: 'simple',
+
+    // Music values everywhere below: 'builtin' (music box), 'none', 'continue' (keep what's playing),
+    // 'song:0' (first song in songs:), 'song:1', … or a file path like 'sounds/our-song.mp3'
+    music: 'builtin',       // for plan 'simple'; starts when the gift opens
+
+    // Your songs. src is a file path (e.g. 'sounds/our-song.mp3'); builder.html packs them in for you.
+    songs: [
+      // { name: 'Our song', src: 'sounds/our-song.mp3' },
+    ],
+
+    hook: {                 // for plan 'hook'
+      song: 'song:0',
+      softStart: 0,         // seconds: where the soft part starts playing
+      hook: 60,             // seconds: where the hook / chorus starts (played when they say Yes)
+      softVolume: 0.45,     // 0 – 1, volume while waiting
+      beginAt: 'start',     // 'start' = as soon as the page is tapped, 'open' = when the gift opens
+      quietAfter: 15,       // seconds after the gift opens before it starts getting quieter
+      fadeTime: 40,         // seconds to fade from soft to silent
+    },
+
+    stages: {               // for plan 'stages'
+      before: { music: 'none',     start: 0 },   // before the gift is opened
+      opened: { music: 'builtin',  start: 0 },   // after it opens, while reading the note
+      yes:    { music: 'continue', start: 0 },   // after "Yes"
+    },
+
     musicVolume: 0.85,      // 0 – 1
     effects: true,          // false = no sound effects
     effectsVolume: 0.8,     // 0 – 1
@@ -980,11 +1030,12 @@ const CONFIG = {
   /* ---------- sound (all generated live with Web Audio, no files) ---------- */
   const Sound = (() => {
     let ctx = null, master, music, sfx, noiseBuf, musicOn = false, timer = null;
-    const SC = Object.assign({ music: 'builtin', musicVolume: .85, effects: true, effectsVolume: .8 }, CONFIG.sound);
+    const SC = Object.assign({ plan: 'simple', music: 'builtin', musicVolume: .85, effects: true, effectsVolume: .8, songs: [] }, CONFIG.sound);
     const files = SC.files || {};
     if (files.music && (!SC.music || SC.music === 'builtin')) SC.music = files.music;   // older setting name
-    let songEl = null;
-
+    SC.hook = Object.assign({ song: 'song:0', softStart: 0, hook: 60, softVolume: .45, beginAt: 'start', quietAfter: 15, fadeTime: 40 }, SC.hook);
+    SC.stages = Object.assign({ before: { music: 'none' }, opened: { music: 'builtin' }, yes: { music: 'continue' } }, SC.stages);
+    const PLAN = ['simple', 'hook', 'stages'].includes(SC.plan) ? SC.plan : 'simple';
     function init() {
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1081,6 +1132,114 @@ const CONFIG = {
       timer = setInterval(schedule, 60);
     }
 
+
+    /* ---------- music tracks ---------- */
+    // 'song:N' -> the file; 'builtin' / 'none' / 'continue' stay as they are
+    function resolve(m) {
+      if (!m) return 'none';
+      const k = /^song:(\d+)$/.exec(m);
+      if (k) { const sg = (SC.songs || [])[+k[1]]; return sg && sg.src ? sg.src : 'none'; }
+      return m;
+    }
+    function ramp(param, v, secs) {
+      const t = ctx.currentTime;
+      param.cancelScheduledValues(t);
+      param.setValueAtTime(param.value, t);
+      param.linearRampToValueAtTime(v, t + Math.max(.02, secs));
+    }
+    // the music box, as a track you can start, fade and stop
+    const builtinTrack = {
+      kind: 'builtin', on: false,
+      start(vol, fade = 3) {
+        if (!this.on) { this.on = true; next = ctx.currentTime + .1; schedule(); timer = setInterval(schedule, 60); }
+        ramp(music.gain, vol, fade);
+      },
+      fadeTo(vol, secs) { ramp(music.gain, vol, secs); },
+      stop(fade = 1.5) {
+        ramp(music.gain, 0, fade);
+        setTimeout(() => { if (music.gain.value < .01) { clearInterval(timer); this.on = false; } }, fade * 1000 + 100);
+      },
+    };
+    // a song file. Volume goes through Web Audio when possible (so fades also work on iPhone)
+    function FileTrack(src) {
+      const el = new Audio(); el.preload = 'auto'; el.src = src;
+      const t = { kind: 'file', src, el, loopAt: 0, vol: 0, iv: null };
+      const graph = /^data:/.test(src) || /^https?:/.test(location.protocol);
+      if (graph) {
+        try { t.gain = ctx.createGain(); t.gain.gain.value = 0; ctx.createMediaElementSource(el).connect(t.gain); t.gain.connect(master); }
+        catch (e) { t.gain = null; }
+      }
+      if (!t.gain) el.volume = 0;
+      el.addEventListener('ended', () => { t.seek(t.loopAt); el.play().catch(() => {}); });
+      t.seek = sec => {
+        const go = () => { try { el.currentTime = Math.max(0, Math.min(sec, (el.duration || 1e9) - .2)); } catch (e) {} };
+        if (el.readyState >= 1) go(); else el.addEventListener('loadedmetadata', go, { once: true });
+      };
+      t.fadeTo = (v, secs) => {
+        t.vol = v;
+        if (t.gain) return ramp(t.gain.gain, v, secs);
+        clearInterval(t.iv);
+        const from = el.volume, steps = Math.max(1, Math.round(secs * 20)); let i = 0;
+        t.iv = setInterval(() => { i++; el.volume = Math.max(0, Math.min(1, from + (v - from) * i / steps)); if (i >= steps) clearInterval(t.iv); }, 50);
+      };
+      t.start = (from, vol, fade = 1.5) => { t.loopAt = from; t.seek(from); el.play().catch(() => {}); t.fadeTo(vol, fade); };
+      t.stop = (fade = 1.5) => { t.fadeTo(0, fade); setTimeout(() => { if (t.vol === 0) el.pause(); }, fade * 1000 + 100); };
+      return t;
+    }
+    let current = null;                        // what's playing now
+    const tracks = {};                         // one FileTrack per song file
+    function play(m, from = 0, vol = SC.musicVolume, fade = 1.5) {
+      if (!ctx) return;
+      const src = resolve(m);
+      if (src === 'continue') return;
+      if (src === 'none') { if (current) current.stop(fade); current = null; return; }
+      if (src === 'builtin') {
+        if (current && current !== builtinTrack) current.stop(fade);
+        current = builtinTrack; builtinTrack.start(vol, current.on ? fade : 3); return;
+      }
+      const tr = tracks[src] || (tracks[src] = FileTrack(src));
+      if (current && current !== tr) current.stop(fade);
+      if (current === tr) {                    // same song, new place: dip, jump, come back up
+        tr.fadeTo(0, .25);
+        setTimeout(() => { tr.loopAt = from; tr.seek(from); tr.el.play().catch(() => {}); tr.fadeTo(vol, .9); }, 260);
+      } else tr.start(from, vol, fade);
+      current = tr;
+    }
+
+    /* ---------- the three music plans ---------- */
+    const H = SC.hook;
+    let quietTimer = null, saidYes = false, started = false;
+    const needsStart = (PLAN === 'stages' && !['none', 'continue'].includes(resolve(SC.stages.before && SC.stages.before.music)))
+                    || (PLAN === 'hook' && H.beginAt !== 'open' && resolve(H.song) !== 'none');
+    function onStart() {                       // first tap (the "Tap to begin" screen)
+      init();
+      if (started) return; started = true;
+      if (PLAN === 'stages') play(SC.stages.before.music, +SC.stages.before.start || 0);
+      if (PLAN === 'hook' && H.beginAt !== 'open') play(H.song, +H.softStart || 0, SC.musicVolume * H.softVolume, 2.5);
+    }
+    function onOpen() {
+      if (PLAN === 'simple') { setTimeout(() => play(SC.music, 0, SC.musicVolume, 4), 900); return; }
+      if (PLAN === 'stages') { setTimeout(() => play(SC.stages.opened.music, +SC.stages.opened.start || 0), 500); return; }
+      // hook plan: soft song, then slowly fade away while they decide
+      if (H.beginAt === 'open' || !current) play(H.song, +H.softStart || 0, SC.musicVolume * H.softVolume, 2.5);
+      clearTimeout(quietTimer);
+      quietTimer = setTimeout(() => { if (!saidYes && current) current.fadeTo(0, Math.max(1, +H.fadeTime || 40)); }, Math.max(0, +H.quietAfter || 0) * 1000);
+    }
+    function onYes() {
+      saidYes = true; clearTimeout(quietTimer);
+      if (PLAN === 'hook') {
+        const src = resolve(H.song);
+        if (src === 'none') return;
+        const tr = tracks[src] || (tracks[src] = FileTrack(src));
+        if (current && current !== tr) current.stop(1);
+        current = tr;
+        tr.fadeTo(0, .2);                      // quick dip, then straight into the hook, full volume
+        setTimeout(() => { tr.loopAt = +H.hook || 0; tr.seek(+H.hook || 0); tr.el.play().catch(() => {}); tr.fadeTo(SC.musicVolume, .7); }, 220);
+      }
+      if (PLAN === 'stages') play(SC.stages.yes.music, +SC.stages.yes.start || 0);
+    }
+    function startMusic() { onOpen(); }        // kept for older code
+
     window.addEventListener('pointerdown', init);
     window.addEventListener('keydown', init);
 
@@ -1092,7 +1251,8 @@ const CONFIG = {
       return true;
     }
     return {
-      startMusic,
+      startMusic, onStart, onOpen, onYes, needsStart,
+      debug: () => current && current.kind === 'file' ? { t: +current.el.currentTime.toFixed(2), vol: +(current.gain ? current.gain.gain.value : current.el.volume).toFixed(3), paused: current.el.paused } : current ? { kind: current.kind, vol: +music.gain.value.toFixed(3) } : null,
       open() {                                  // lid pops, then whooshes away
         if (custom('open')) return;
         if (!ok()) return;
@@ -1361,7 +1521,7 @@ const CONFIG = {
     rx = -30;
     box.classList.add('opened');
     Sound.open();
-    setTimeout(Sound.startMusic, 900);
+    Sound.onOpen();
     setTimeout(() => box.classList.add("gone"), 2100);
     $('ambient').classList.add('on');
     hint.style.opacity = 0;
@@ -1396,6 +1556,12 @@ const CONFIG = {
     } else if (phase === 'opened') zoomT = clamp(zoomT + .2, 0, 1);
   });
 
+  if (Sound.needsStart) {
+    const st = $('startScreen');
+    $('startText').textContent = T.startHint || 'Tap to begin';
+    st.hidden = false;
+    st.addEventListener('click', () => { Sound.onStart(); st.classList.add('gone'); setTimeout(() => st.remove(), 1000); }, { once: true });
+  }
   $('hintOut').textContent = isTouch ? '↓ Swipe down or pinch in to step back' : '↑ Scroll up to step back';
   function enterInside() {
     phase = 'inside';
@@ -1427,6 +1593,7 @@ const CONFIG = {
     e.stopPropagation();
     yesBtn.classList.add('chosen');
     if (isTouch) Sound.scribble();
+    Sound.onYes();
     setTimeout(() => { Sound.yes(); celebrate(); }, 650);
   });
 

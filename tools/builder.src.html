@@ -135,6 +135,24 @@
   .choices { display: grid; gap: 8px; margin-bottom: 12px; }
   audio { width: 100%; margin-top: 8px; }
 
+  /* music */
+  .h3 { font-size: 1rem; margin: 6px 0 10px; color: #ffd0e0; }
+  .songlist { display: grid; gap: 8px; margin-bottom: 10px; }
+  .song { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: #1a0a14; }
+  .song .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .song .dur { color: var(--muted); font-size: .85rem; }
+  .planpanel { margin-top: 14px; display: grid; gap: 14px; }
+  .wave { position: relative; width: 100%; height: 96px; border-radius: 10px; background: #12060e; border: 1px solid var(--line); cursor: crosshair; touch-action: none; overflow: hidden; }
+  .wave canvas { width: 100%; height: 100%; display: block; }
+  .wave .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: .9rem; }
+  .marks { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .mk { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1.5px solid rgba(255,255,255,.15); border-radius: 999px; cursor: pointer; font-size: .9rem; }
+  .mk.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+  .mk i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+  .time { width: 84px !important; padding: 6px 8px !important; text-align: center; }
+  .stage { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; background: rgba(255,255,255,.02); }
+  .stage b { font-size: .98rem; }
+
   /* photos */
   .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 14px; }
   .ph { background: #1a0a14; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: grid; }
@@ -229,6 +247,7 @@
       <label class="f">Big message after "Yes"<input type="text" id="t_yesTitle"></label>
       <label class="f">Small message after "Yes"<input type="text" id="t_yesSubtitle"></label>
       <label class="f">Text after the box opens (scroll mode)<input type="text" id="t_insideHint"></label>
+      <label class="f">"Tap to begin" screen (only when music plays before opening)<input type="text" id="t_startHint"></label>
     </div>
   </section>
 
@@ -277,18 +296,18 @@
   <!-- 6. Music -->
   <section class="card">
     <h2><span class="n">6</span> Music &amp; sound</h2>
-    <p class="sub">Music starts when the gift is opened.</p>
-    <div class="choices" id="musicChoices">
-      <label class="choice"><input type="radio" name="music" value="builtin"> 🎼 Built-in music box melody</label>
-      <label class="choice"><input type="radio" name="music" value="file"> 🎵 My own song (mp3)</label>
-      <label class="choice"><input type="radio" name="music" value="none"> 🔇 No music</label>
-    </div>
-    <div id="songBox" style="display:none; margin-bottom:12px">
-      <button class="btn" id="pickSong">Choose song file…</button>
-      <span class="hint-small" id="songName" style="margin-left:8px"></span>
-      <input type="file" id="songFile" accept="audio/*" hidden>
-      <audio id="songPrev" controls style="display:none"></audio>
-    </div>
+    <p class="sub">Upload your songs once, then choose how the music should play.</p>
+
+    <h3 class="h3">🎵 Your songs</h3>
+    <div id="songList" class="songlist"></div>
+    <button class="btn" id="addSong">＋ Upload a song (mp3, m4a, wav…)</button>
+    <input type="file" id="songFile" accept="audio/*" multiple hidden>
+
+    <h3 class="h3" style="margin-top:20px">🎚️ How the music plays</h3>
+    <div class="modes" id="plans"></div>
+    <div id="planPanel" class="planpanel"></div>
+
+    <h3 class="h3" style="margin-top:20px">🔊 Volume &amp; effects</h3>
     <div class="grid2">
       <label class="f">Music volume <input type="range" id="musicVol" min="0" max="1" step="0.05"></label>
       <div>
@@ -296,6 +315,7 @@
         <label class="f" style="margin-top:8px">Effects volume <input type="range" id="fxVol" min="0" max="1" step="0.05"></label>
       </div>
     </div>
+    <audio id="audition" preload="auto"></audio>
   </section>
 
   <!-- 6. Photos -->
@@ -374,6 +394,17 @@ function normalise(c) {
   s.sound.files = Object.assign({}, DEFAULTS.sound.files, c && c.sound && c.sound.files);
   if (s.sound.files.music && s.sound.music === 'builtin') s.sound.music = s.sound.files.music;  // old name
   delete s.sound.files.music;
+  s.sound.hook = Object.assign(clone(DEFAULTS.sound.hook), c && c.sound && c.sound.hook);
+  s.sound.stages = clone(DEFAULTS.sound.stages);
+  ['before', 'opened', 'yes'].forEach(k => Object.assign(s.sound.stages[k], c && c.sound && c.sound.stages && c.sound.stages[k]));
+  if (!Array.isArray(s.sound.songs)) s.sound.songs = [];
+  // pages made before the song list: the song was stored straight in music
+  if (s.sound.music && !/^(builtin|none|continue|song:\d+)$/.test(s.sound.music)) {
+    s.sound.songs.push({ name: s.sound.songName || 'My song', src: s.sound.music });
+    s.sound.music = 'song:' + (s.sound.songs.length - 1);
+  }
+  delete s.sound.songName;
+  if (!s.sound.plan) s.sound.plan = 'simple';
   s.floor = Object.assign(clone(DEFAULTS.floor), c && c.floor);
   if (c && !c.floor && c.loosePetals === false) s.floor.fill = 'none';   // pages made before this option
   delete s.loosePetals;
@@ -385,7 +416,8 @@ const KEY = 'valentine-maker-v1';
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); return; } catch (e) {}
   try {                                       // too big with photos/song: keep the rest
-    const lite = clone(S); lite.photos = []; if (/^data:/.test(lite.sound.music)) lite.sound.music = 'builtin';
+    const lite = clone(S); lite.photos = []; lite.sound.songs = [];
+    lite.sound.music = /^song:/.test(lite.sound.music) ? 'builtin' : lite.sound.music;
     localStorage.setItem(KEY, JSON.stringify(lite));
   } catch (e) {}
 }
@@ -485,7 +517,7 @@ const TEXT_FIELDS = {
   question:   { multi: true, html: true },
   tapHint:    { multi: true, html: true },
   insideHint: { html: true },
-  yes: {}, no: {}, signature: {}, yesTitle: {}, yesSubtitle: {},
+  yes: {}, no: {}, signature: {}, yesTitle: {}, yesSubtitle: {}, startHint: {},
 };
 function bindText() {
   Object.entries(TEXT_FIELDS).forEach(([k, o]) => {
@@ -684,43 +716,240 @@ function bindFlowers() {
 function confirmSoft(msg) { return window.confirm(msg); }
 
 /* =================================================================
-   5. Music
+   Music: song library, plans, waveform markers
    ================================================================= */
-function musicKind() { const m = S.sound.music; return !m || m === 'builtin' ? 'builtin' : m === 'none' ? 'none' : 'file'; }
-let songData = musicKind() === 'file' ? S.sound.music : '';
-let musicChoice = musicKind();
-function bindMusic() {
-  document.querySelectorAll('input[name=music]').forEach(r => {
-    r.onchange = () => {
-      musicChoice = r.value;
-      if (r.value === 'file') { S.sound.music = songData || 'builtin'; if (!songData) $('songFile').click(); }
-      else S.sound.music = r.value;
-      paintMusic(); save();
-    };
+const fmt = t => { t = Math.max(0, +t || 0); const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
+const parseTime = v => { v = String(v).trim(); if (v.includes(':')) { const [m, s] = v.split(':'); return (+m || 0) * 60 + (+s || 0); } return +v || 0; };
+const songs = () => S.sound.songs;
+const songOptions = (value, extra) => {
+  let o = extra.map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`).join('');
+  songs().forEach((sg, i) => { o += `<option value="song:${i}" ${value === 'song:' + i ? 'selected' : ''}>🎵 ${esc(sg.name)}</option>`; });
+  return o;
+};
+const songOf = ref => { const m = /^song:(\d+)$/.exec(ref || ''); return m ? songs()[+m[1]] : null; };
+
+/* --- decoding songs for the waveform (cached) --- */
+const waveCache = new Map();
+let decoder = null;
+function getWave(src) {
+  if (waveCache.has(src)) return waveCache.get(src);
+  const p = (async () => {
+    decoder = decoder || new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await (await fetch(src)).arrayBuffer();
+    const audio = await new Promise((res, rej) => decoder.decodeAudioData(buf, res, rej));
+    const ch = audio.getChannelData(0), N = 600, step = Math.floor(ch.length / N) || 1, peaks = [];
+    for (let i = 0; i < N; i++) { let m = 0; for (let j = i * step, e = Math.min(ch.length, j + step); j < e; j += 8) m = Math.max(m, Math.abs(ch[j])); peaks.push(m); }
+    const mx = Math.max(.01, ...peaks);
+    return { duration: audio.duration, peaks: peaks.map(v => v / mx) };
+  })();
+  waveCache.set(src, p);
+  p.catch(() => waveCache.delete(src));
+  return p;
+}
+
+/* --- one shared player for listening in the builder --- */
+const aud = () => $('audition');
+let playingSrc = '';
+function audition(src, t) {
+  const a = aud();
+  if (playingSrc !== src) { a.src = src; playingSrc = src; }
+  const go = () => { a.currentTime = t; a.play().catch(() => {}); };
+  if (a.readyState >= 1) go(); else a.addEventListener('loadedmetadata', go, { once: true });
+}
+function stopAudition() { aud().pause(); }
+
+/* --- waveform with draggable time markers --- */
+const waves = [];
+function makeWave(el, ref, markers) {
+  // markers: [{ key, label, color, get(), set(t) }]
+  const sg = songOf(ref);
+  el.innerHTML = '';
+  if (!sg) { el.innerHTML = '<div class="wave"><div class="msg">Choose one of your songs above</div></div>'; return; }
+  let active = 0;
+  const box = document.createElement('div'); box.className = 'wave';
+  box.innerHTML = '<canvas></canvas><div class="msg">Loading waveform…</div>';
+  const cv = box.querySelector('canvas');
+  const bar = document.createElement('div'); bar.className = 'marks';
+  bar.innerHTML = markers.map((m, i) => `
+    <span class="mk ${i === 0 ? 'on' : ''}" style="--c:${m.color}" title="Click, then place it on the waveform"><i></i>${m.label}
+      <input class="time" type="text" value="${fmt(m.get())}" style="display:inline-block" title="minutes:seconds"></span>
+    <button class="btn small" data-play="${i}">▶ ${m.short || 'Play'}</button>`).join('') + `<button class="btn small" data-stop>■ Stop</button>`;
+  el.append(box, bar);
+  const W = { el: box, cv, src: sg.src, data: null, markers, draw: null };
+  const labels = [...bar.querySelectorAll('.mk')];
+  labels.forEach((l, i) => {
+    const pick = () => { active = i; labels.forEach((x, j) => x.classList.toggle('on', j === i)); };
+    l.onclick = pick;
+    const ti = l.querySelector('.time');
+    ti.onfocus = pick;                        // typing a time also selects that marker
+    ti.onchange = () => { markers[i].set(clampT(parseTime(ti.value))); ti.value = fmt(markers[i].get()); W.draw(); save(); };
   });
-  $('pickSong').onclick = () => $('songFile').click();
-  $('songFile').onchange = e => {
-    const file = e.target.files[0]; if (!file) return;
-    if (file.size > 15 * 1024 * 1024) toast('That song is big (' + (file.size / 1048576).toFixed(1) + ' MB). The page will take longer to open.', 4500);
-    const rd = new FileReader();
-    rd.onload = () => { songData = rd.result; musicChoice = 'file'; S.sound.music = songData; S.sound.songName = file.name; paintMusic(); save(); toast('Song added 🎵'); };
-    rd.readAsDataURL(file);
-    e.target.value = '';
+  bar.querySelectorAll('[data-play]').forEach(b => b.onclick = () => audition(sg.src, markers[+b.dataset.play].get()));
+  bar.querySelector('[data-stop]').onclick = stopAudition;
+  const clampT = t => Math.max(0, Math.min(W.data ? W.data.duration - .5 : 1e6, t));
+  W.draw = () => {
+    const r = box.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.max(10, r.width * dpr); cv.height = r.height * dpr;
+    const g = cv.getContext('2d'), w = cv.width, h = cv.height;
+    g.clearRect(0, 0, w, h);
+    if (!W.data) return;
+    const { peaks, duration } = W.data, bw = w / peaks.length;
+    g.fillStyle = 'rgba(255,170,205,.55)';
+    peaks.forEach((p, i) => { const ph = Math.max(1, p * h * .8); g.fillRect(i * bw, (h - ph) / 2, Math.max(1, bw - .5), ph); });
+    markers.forEach(m => {
+      const x = m.get() / duration * w;
+      g.fillStyle = m.color; g.fillRect(x - 1 * dpr, 0, 2 * dpr, h);
+      g.beginPath(); g.moveTo(x - 6 * dpr, 0); g.lineTo(x + 6 * dpr, 0); g.lineTo(x, 9 * dpr); g.fill();
+    });
+    const a = aud();
+    if (playingSrc === sg.src && !a.paused) { g.fillStyle = '#fff'; g.fillRect(a.currentTime / duration * w - .5 * dpr, 0, 1 * dpr, h); }
+    labels.forEach((l, i) => { const ti = l.querySelector('.time'); if (document.activeElement !== ti) ti.value = fmt(markers[i].get()); });
   };
+  const setFrom = e => {
+    if (!W.data) return;
+    const r = box.getBoundingClientRect();
+    markers[active].set(clampT((e.clientX - r.left) / r.width * W.data.duration));
+    W.draw();
+  };
+  box.onpointerdown = e => { e.preventDefault(); box.setPointerCapture(e.pointerId); box._drag = true; setFrom(e); };
+  box.onpointermove = e => { if (box._drag) setFrom(e); };
+  box.onpointerup = box.onpointercancel = () => { if (box._drag) { box._drag = false; save(); } };
+  getWave(sg.src).then(d => { W.data = d; box.querySelector('.msg').remove(); W.draw(); })
+    .catch(() => { box.querySelector('.msg').textContent = "Couldn't read this song's waveform (you can still type the times)"; });
+  waves.push(W);
+}
+(function loop() {                         // moving playhead while listening
+  if (!aud().paused) waves.forEach(w => w.el.isConnected && w.data && w.draw());
+  requestAnimationFrame(loop);
+})();
+window.addEventListener('resize', () => waves.forEach(w => w.el.isConnected && w.draw()));
+
+/* --- song list --- */
+function drawSongs() {
+  const el = $('songList');
+  if (!songs().length) { el.innerHTML = '<p class="hint-small">No songs yet. The built-in music box always works without any.</p>'; return; }
+  el.innerHTML = '';
+  songs().forEach((sg, i) => {
+    const d = document.createElement('div'); d.className = 'song';
+    d.innerHTML = `<span>🎵</span><span class="nm">${esc(sg.name)}</span><span class="dur" id="dur${i}"></span>
+      <button class="btn small" data-a="play">▶</button><button class="btn small" data-a="stop">■</button><button class="btn small danger" data-a="del">✕</button>`;
+    d.querySelector('[data-a=play]').onclick = () => audition(sg.src, 0);
+    d.querySelector('[data-a=stop]').onclick = stopAudition;
+    d.querySelector('[data-a=del]').onclick = () => { if (confirmSoft(`Remove "${sg.name}"?`)) removeSong(i); };
+    getWave(sg.src).then(w => { const x = $('dur' + i); if (x) x.textContent = fmt(w.duration).replace(/\.\d$/, ''); }).catch(() => {});
+    el.appendChild(d);
+  });
+}
+function remapRefs(fn) {                    // keep every 'song:N' pointing at the right song
+  const snd = S.sound;
+  snd.music = fn(snd.music, 'builtin');
+  snd.hook.song = fn(snd.hook.song, 'song:0');
+  ['before', 'opened', 'yes'].forEach(k => snd.stages[k].music = fn(snd.stages[k].music, k === 'before' ? 'none' : 'builtin'));
+}
+function removeSong(i) {
+  stopAudition();
+  songs().splice(i, 1);
+  remapRefs((ref, fallback) => {
+    const m = /^song:(\d+)$/.exec(ref || ''); if (!m) return ref;
+    const j = +m[1]; return j === i ? fallback : j > i ? 'song:' + (j - 1) : ref;
+  });
+  drawSongs(); drawPlan(); save();
+}
+function addSongs(fileList) {
+  const list = [...fileList].filter(f => f.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg|aac)$/i.test(f.name));
+  list.forEach(file => {
+    if (file.size > 15 * 1024 * 1024) toast(`"${file.name}" is big (${(file.size / 1048576).toFixed(1)} MB). The page will take longer to open.`, 4500);
+    const rd = new FileReader();
+    rd.onload = () => {
+      songs().push({ name: file.name.replace(/\.[^.]+$/, ''), src: rd.result });
+      const n = songs().length - 1;
+      if (n === 0) {                       // first song: use it straight away
+        if (S.sound.plan === 'simple' && S.sound.music === 'builtin') S.sound.music = 'song:0';
+        S.sound.hook.song = 'song:0';
+      }
+      drawSongs(); drawPlan(); save(); toast('Song added 🎵');
+    };
+    rd.readAsDataURL(file);
+  });
+}
+
+/* --- plans --- */
+const PLANS = [
+  ['simple', '🎼 Simple', 'One music for the whole page, starting when the gift opens.'],
+  ['hook',   '💓 One song, hook on "Yes"', 'Plays softly, slowly fades away while they think, then jumps to the hook when they say Yes.'],
+  ['stages', '🎬 Different music for each part', 'Choose music before opening, after opening, and after "Yes".'],
+];
+function drawPlans() {
+  const el = $('plans'); el.innerHTML = '';
+  PLANS.forEach(([v, title, desc]) => {
+    const l = document.createElement('label');
+    l.className = 'mode' + (S.sound.plan === v ? ' on' : '');
+    l.innerHTML = `<input type="radio" name="plan" value="${v}" ${S.sound.plan === v ? 'checked' : ''}><b>${title}</b><span>${desc}</span>`;
+    l.querySelector('input').onchange = () => { S.sound.plan = v; stopAudition(); drawPlans(); drawPlan(); save(); };
+    el.appendChild(l);
+  });
+}
+function drawPlan() {
+  waves.length = 0;
+  const P = $('planPanel'), snd = S.sound;
+  if (snd.plan === 'simple') {
+    P.innerHTML = `<label class="f" style="max-width:420px">Music (starts when the gift opens)
+      <select id="simpleMusic">${songOptions(snd.music, [['builtin', '🎼 Built-in music box'], ['none', '🔇 No music']])}</select></label>`;
+    $('simpleMusic').onchange = e => { snd.music = e.target.value; save(); };
+    return;
+  }
+  if (snd.plan === 'hook') {
+    const H = snd.hook;
+    P.innerHTML = `
+      ${songs().length ? '' : '<p class="hint-small">⬆️ Upload a song first.</p>'}
+      <label class="f" style="max-width:420px">Song <select id="hookSong">${songOptions(H.song, songs().length ? [] : [['none', '(no songs yet)']])}</select></label>
+      <div>
+        <p class="hint-small" style="margin-bottom:6px">Pick a marker, then click or drag on the waveform to place it. ▶ plays from that point.</p>
+        <div id="hookWave"></div>
+      </div>
+      <div class="grid2">
+        <div class="f" style="grid-column:1/-1">Start the song
+          <label class="row" style="gap:8px"><input type="radio" name="beginAt" value="start" ${H.beginAt !== 'open' ? 'checked' : ''}> When the page starts (shows "Tap to begin")</label>
+          <label class="row" style="gap:8px"><input type="radio" name="beginAt" value="open" ${H.beginAt === 'open' ? 'checked' : ''}> When the gift opens</label>
+        </div>
+        <label class="f">Soft volume while waiting <input type="range" id="softVol" min="0.05" max="1" step="0.05" value="${H.softVolume}"></label>
+        <label class="f">Start getting quieter after (seconds, after the gift opens) <input type="number" id="quietAfter" min="0" max="600" step="1" value="${H.quietAfter}"></label>
+        <label class="f">Fade to silence over (seconds) <input type="number" id="fadeTime" min="1" max="600" step="1" value="${H.fadeTime}"></label>
+      </div>`;
+    $('hookSong').onchange = e => { H.song = e.target.value; drawPlan(); save(); };
+    P.querySelectorAll('input[name=beginAt]').forEach(r => r.onchange = () => { H.beginAt = r.value; save(); });
+    $('softVol').oninput = e => { H.softVolume = +e.target.value; save(); };
+    $('quietAfter').oninput = e => { H.quietAfter = Math.max(0, +e.target.value || 0); save(); };
+    $('fadeTime').oninput = e => { H.fadeTime = Math.max(1, +e.target.value || 1); save(); };
+    makeWave($('hookWave'), H.song, [
+      { label: 'Soft start', short: 'Soft part', color: '#6fe3a5', get: () => +H.softStart || 0, set: t => H.softStart = +t.toFixed(1) },
+      { label: 'Hook ♥', short: 'Hook', color: '#ff6fa5', get: () => +H.hook || 0, set: t => H.hook = +t.toFixed(1) },
+    ]);
+    return;
+  }
+  // stages
+  const ROWS = [['before', '1. Before the gift opens', 'Shows a "Tap to begin" screen so the music can start.'],
+                ['opened', '2. After it opens (reading the note)', ''],
+                ['yes', '3. After "Yes"', 'Tip: pick the same song and set the start to its hook.']];
+  P.innerHTML = ROWS.map(([k, title, tip]) => `<div class="stage"><b>${title}</b>
+      <label class="f">Music <select data-stage="${k}">${songOptions(snd.stages[k].music, [['none', '🔇 Nothing'], ['builtin', '🎼 Built-in music box']].concat(k === 'before' ? [] : [['continue', '⏩ Keep what was playing']]))}</select></label>
+      ${tip ? `<span class="hint-small">${tip}</span>` : ''}
+      <div data-wave="${k}"></div></div>`).join('');
+  ROWS.forEach(([k]) => {
+    const st = snd.stages[k];
+    P.querySelector(`[data-stage=${k}]`).onchange = e => { st.music = e.target.value; st.start = 0; drawPlan(); save(); };
+    if (songOf(st.music)) makeWave(P.querySelector(`[data-wave=${k}]`), st.music, [
+      { label: 'Start here', short: 'Play', color: '#ff6fa5', get: () => +st.start || 0, set: t => st.start = +t.toFixed(1) },
+    ]);
+  });
+}
+function bindMusic() {
+  $('addSong').onclick = () => $('songFile').click();
+  $('songFile').onchange = e => { addSongs(e.target.files); e.target.value = ''; };
   $('musicVol').value = S.sound.musicVolume; $('musicVol').oninput = e => { S.sound.musicVolume = +e.target.value; save(); };
   $('fxVol').value = S.sound.effectsVolume; $('fxVol').oninput = e => { S.sound.effectsVolume = +e.target.value; save(); };
   $('effects').checked = S.sound.effects !== false; $('effects').onchange = e => { S.sound.effects = e.target.checked; save(); };
-  paintMusic();
-}
-function paintMusic() {
-  const k = musicChoice;
-  document.querySelectorAll('#musicChoices .choice').forEach(c => c.classList.toggle('on', c.querySelector('input').value === k));
-  document.querySelectorAll('input[name=music]').forEach(r => r.checked = r.value === k);
-  $('songBox').style.display = k === 'file' ? 'block' : 'none';
-  const has = k === 'file' && !!songData;
-  $('songName').textContent = has ? '✓ ' + (S.sound.songName || 'your song') : 'No song chosen yet';
-  $('songPrev').style.display = has ? 'block' : 'none';
-  if (has && $('songPrev').src !== S.sound.music) $('songPrev').src = S.sound.music;
+  drawSongs(); drawPlans(); drawPlan();
 }
 
 /* =================================================================
@@ -785,7 +1014,6 @@ function bindPhotos() {
    ================================================================= */
 function buildConfig() {
   const c = clone(S);
-  delete c.sound.songName;
   c.flowers = c.flowers.map(f => ({ type: f.type, color: f.color, x: Math.round(f.x), y: Math.round(f.y), size: Math.round(f.size) }));
   return c;
 }
@@ -796,7 +1024,8 @@ function buildHtml() {
   return TEMPLATE.slice(0, a) + block + TEMPLATE.slice(b);
 }
 function download() {
-  if (musicChoice === 'file' && !songData) toast('No song chosen yet, so the built-in music box will play.', 4000);
+  const sn = S.sound;
+  if ((sn.plan === 'hook' && !songOf(sn.hook.song)) ) toast('No song chosen for "hook" music, so it will be silent.', 4000);
   const html = buildHtml();
   const blob = new Blob([html], { type: 'text/html' });
   const a = document.createElement('a');
@@ -825,8 +1054,6 @@ function bindBar() {
       const cfg = extractConfig(String(rd.result));
       if (!cfg) { toast("That file doesn't look like a page made here."); return; }
       S = normalise(cfg);
-      songData = musicKind() === 'file' ? S.sound.music : '';
-      musicChoice = musicKind();
       selected = -1; bindAll(); save(); toast('Loaded your page ✓');
     };
     rd.readAsText(f);
@@ -834,7 +1061,7 @@ function bindBar() {
   };
   $('resetAll').onclick = () => {
     if (!confirmSoft('Start over? This clears everything you set here.')) return;
-    S = normalise({}); songData = ''; musicChoice = musicKind(); selected = -1; bindAll(); save(); toast('Back to the start');
+    S = normalise({}); stopAudition(); selected = -1; bindAll(); save(); toast('Back to the start');
   };
 }
 /* =================================================================
