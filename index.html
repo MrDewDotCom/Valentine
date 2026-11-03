@@ -188,7 +188,7 @@
     transform: translateY(-18px) rotateX(90deg);
   }
   /* opening: the lid pops up, then tumbles away in 3D */
-  .box.opened .lid { pointer-events: none; animation: lidAway 1.6s cubic-bezier(.3,.1,.4,1) forwards; }
+  .box.opened .lid { pointer-events: none; animation: lidAway 2s cubic-bezier(.3,.1,.4,1) forwards; }
   .box.gone .lid { display: none; }
   @keyframes lidAway {
     0%   { transform: translateY(-86px); }
@@ -293,8 +293,34 @@
   }
 
   #roses { position: absolute; inset: 0; pointer-events: none; }
-  .rose-top { position: absolute; left: 50%; top: 50%; pointer-events: none; }
-  .rose-top svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  /* 3D roses: each one is built from layered petal planes that open outward */
+  .r3d { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+  .r3d .pt {
+    position: absolute; left: 0; top: 0;
+    transform-origin: 50% 100%;
+    border-radius: 50% 50% 42% 42% / 62% 62% 38% 38%;
+    backface-visibility: visible;
+  }
+  .r3d .lf { border-radius: 0; background: none; }
+  .r3d .lf svg { width: 100%; height: 100%; display: block; }
+
+  /* sound toggle */
+  .sound-btn {
+    position: fixed;
+    top: 16px; right: 16px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,.3);
+    background: rgba(255,255,255,.1);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 30;
+    transition: transform .2s, background .2s;
+  }
+  .sound-btn:hover { transform: scale(1.08); background: rgba(255,255,255,.18); }
   .petal-loose { position: absolute; left: 50%; top: 50%; pointer-events: none; }
 
   /* ---------- yes screen ---------- */
@@ -354,6 +380,7 @@
 
 <div class="hint" id="hint"><span class="line">A little something<br>for you… tap it 💌</span></div>
 
+<button class="sound-btn" id="soundBtn" aria-label="Mute sound" title="Sound on/off">🔊</button>
 <div class="hint-out" id="hintOut"></div>
 
 <div class="scene" id="scene">
@@ -487,28 +514,45 @@
     bow.appendChild(t);
   });
 
-  /* ---------- roses piled on the note (seen from above) ---------- */
-  function roseSVG(c1, c2, c3, seed) {
-    const rot = seed * 47;
-    let s = `<svg viewBox="-50 -50 100 100"><g transform="rotate(${rot})">`;
-    // leaves
-    s += `<path d="M0 0 C18 -10 38 -8 48 4 C34 12 16 12 0 0Z" fill="#3f8a4c"/>
-          <path d="M0 0 C-14 14 -16 34 -6 46 C4 34 6 16 0 0Z" fill="#4f9d5b"/>
-          <path d="M2 2 L44 4 M-1 2 L-6 44" stroke="#2f6e3a" stroke-width="1.2"/>`;
-    // outer petals
-    for (let i = 0; i < 6; i++) {
-      const a = i * 60 * Math.PI / 180;
-      s += `<circle cx="${Math.cos(a) * 15}" cy="${Math.sin(a) * 15}" r="17" fill="${c1}" stroke="${c3}" stroke-opacity=".35" stroke-width="1"/>`;
+  /* ---------- 3D roses piled on the note ---------- */
+  const mix = (hex, t) => {               // blend a colour toward white
+    const n = parseInt(hex.slice(1), 16);
+    const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * t));
+    return `rgb(${c.join(',')})`;
+  };
+  function petal(parent, cls, w, h, angle, r, tilt, lift, bg) {
+    const p = document.createElement('div');
+    p.className = cls;
+    p.style.width = w + 'px'; p.style.height = h + 'px';
+    p.style.marginLeft = (-w / 2) + 'px'; p.style.marginTop = (-h) + 'px';   // pivot = bottom centre
+    p.style.transform = `translateZ(${lift}px) rotateZ(${angle}deg) translateY(${-r}px) rotateX(${-tilt}deg)`;
+    if (bg) p.style.background = bg;
+    parent.appendChild(p);
+    return p;
+  }
+  function rose3D(S, [c1, c2, c3], seed) {
+    const g = document.createElement('div');
+    g.className = 'r3d';
+    const off = (seed * 53) % 360;
+    // leaves, almost flat
+    for (let i = 0; i < 3; i++) {
+      const lf = petal(g, 'pt lf', S * .3, S * .46, off + i * 120 + 20, S * .14, 10, 0);
+      lf.innerHTML = `<svg viewBox="0 0 20 30" preserveAspectRatio="none"><path d="M10 30 C0 22 0 8 10 0 C20 8 20 22 10 30Z" fill="${i % 2 ? '#4f9d5b' : '#3f8a4c'}"/><path d="M10 29 L10 4" stroke="#2c6a37" stroke-width="1"/></svg>`;
     }
-    // middle petals
-    for (let i = 0; i < 5; i++) {
-      const a = (i * 72 + 30) * Math.PI / 180;
-      s += `<circle cx="${Math.cos(a) * 8}" cy="${Math.sin(a) * 8}" r="13" fill="${c2}" stroke="${c3}" stroke-opacity=".4" stroke-width="1"/>`;
-    }
-    // centre spiral
-    s += `<circle r="10" fill="${c3}"/>
-          <path d="M0 0 m-6 0 a6 6 0 1 1 12 0 a4 4 0 1 1 -8 0 a2 2 0 1 1 4 0" fill="none" stroke="${c2}" stroke-width="1.8"/>`;
-    return s + '</g></svg>';
+    const grad = (c) => `linear-gradient(to top, ${c3} 0%, ${c} 50%, ${mix(c, .35)} 100%)`;
+    // outer ring: wide and open
+    for (let i = 0; i < 5; i++) petal(g, 'pt', S * .5, S * .44, off + i * 72, S * .05, 24, 1, grad(c1));
+    // middle ring: more upright
+    for (let i = 0; i < 5; i++) petal(g, 'pt', S * .4, S * .36, off + i * 72 + 36, S * .03, 50, 2, grad(c2));
+    // inner ring: nearly closed
+    for (let i = 0; i < 4; i++) petal(g, 'pt', S * .3, S * .27, off + i * 90 + 18, S * .015, 70, 3, grad(c1));
+    // bud in the centre
+    for (let i = 0; i < 3; i++) petal(g, 'pt', S * .2, S * .2, off + i * 120, 0, 84, 3, `linear-gradient(to top, ${c3}, ${c2})`);
+    const cap = document.createElement('div');
+    cap.className = 'pt';
+    cap.style.cssText = `width:${S * .14}px;height:${S * .14}px;margin:${-S * .07}px 0 0 ${-S * .07}px;transform:translateZ(${3 + S * .17}px);border-radius:50%;background:radial-gradient(${c3}, ${c2})`;
+    g.appendChild(cap);
+    return g;
   }
   const palettes = [
     ['#e8335f', '#c9244f', '#8f1234'],
@@ -518,19 +562,16 @@
   ];
   // [x, y, size, height above note]: piled around the edges, leaving the words readable
   const pile = [
-    [-62, -66, 50, 4], [-36, -76, 44, 10], [-70, -38, 40, 9], [-48, -52, 38, 17],
-    [ 62, -64, 46, 5], [ 40, -78, 40, 11], [ 68, -36, 42, 8],
-    [-64,  58, 48, 4], [-40,  72, 42, 10], [-70,  30, 38, 8],
-    [ 62,  62, 50, 5], [ 38,  74, 40, 12], [ 70,  30, 40, 9],
-    [  4,  76, 38, 6], [  6, -80, 34, 6],
+    [-60, -64, 48, 2], [-32, -76, 42, 6], [-70, -36, 40, 4], [-46, -48, 36, 9],
+    [ 64, -64, 44, 2], [ 30, -82, 38, 6], [ 72, -32, 40, 4],
+    [-62,  58, 48, 2], [-38,  76, 40, 6], [-70,  28, 38, 4],
+    [ 60,  60, 48, 2], [ 36,  78, 38, 6], [ 70,  28, 40, 4],
+    [  0,  82, 36, 3], [  2, -82, 34, 3],
   ];
   const rosesEl = $('roses');
   pile.forEach(([x, y, size, h], i) => {
-    const r = document.createElement('div');
-    r.className = 'rose-top';
-    const p = palettes[i % palettes.length];
-    r.innerHTML = roseSVG(p[0], p[1], p[2], i + 1);
-    place(r, size, size, `translate3d(${x}px, ${y}px, ${h + 2}px)`);
+    const r = rose3D(size * .84, palettes[i % palettes.length], i + 1);
+    r.style.transform = `translate3d(${x}px, ${y}px, ${h + 1}px)`;
     rosesEl.appendChild(r);
   });
   // a few loose petals drifting over the note
@@ -541,6 +582,166 @@
     place(p, 11, 8, `translate3d(${x}px, ${y}px, ${h}px) rotateZ(${a}deg)`);
     rosesEl.appendChild(p);
   });
+
+
+  /* ---------- sound (all generated live with Web Audio, no files) ---------- */
+  const Sound = (() => {
+    let ctx = null, master, music, sfx, noiseBuf, musicOn = false, timer = null;
+    let muted = false;
+    try { muted = localStorage.getItem('valentine-muted') === '1'; } catch (e) {}
+    const btn = $('soundBtn');
+    const paint = () => { btn.textContent = muted ? '🔇' : '🔊'; btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound'); };
+    paint();
+
+    function init() {
+      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
+      // a little room reverb
+      const verb = ctx.createConvolver();
+      const len = ctx.sampleRate * 2.2, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      }
+      verb.buffer = ir;
+      const wet = ctx.createGain(); wet.gain.value = 0.28;
+      verb.connect(wet); wet.connect(master);
+      music = ctx.createGain(); music.gain.value = 0; music.connect(master); music.connect(verb);
+      sfx = ctx.createGain(); sfx.gain.value = 0.8; sfx.connect(master); sfx.connect(verb);
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 1.5, ctx.sampleRate);
+      const nd = noiseBuf.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    }
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+    function bell(m, t, vol = .18, dest = sfx, len = 1.6) {     // music-box / chime note
+      [[1, 1], [2.01, .28], [3.98, .08]].forEach(([mul, g]) => {
+        const o = ctx.createOscillator(), e = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = hz(m) * mul;
+        e.gain.setValueAtTime(0, t);
+        e.gain.linearRampToValueAtTime(vol * g, t + 0.006);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + len / mul);
+        o.connect(e); e.connect(dest);
+        o.start(t); o.stop(t + len + .05);
+      });
+    }
+    function pad(m, t, dur, vol = .05) {                         // soft low note under the music box
+      const o = ctx.createOscillator(), e = ctx.createGain(), f = ctx.createBiquadFilter();
+      o.type = 'triangle'; o.frequency.value = hz(m);
+      f.type = 'lowpass'; f.frequency.value = 600;
+      e.gain.setValueAtTime(0, t);
+      e.gain.linearRampToValueAtTime(vol, t + .4);
+      e.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(f); f.connect(e); e.connect(music);
+      o.start(t); o.stop(t + dur + .05);
+    }
+    function noise(t, dur, type, f0, f1, vol, q = 1) {
+      const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), e = ctx.createGain();
+      src.buffer = noiseBuf;
+      f.type = type; f.Q.value = q;
+      f.frequency.setValueAtTime(f0, t);
+      f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      e.gain.setValueAtTime(0, t);
+      e.gain.linearRampToValueAtTime(vol, t + dur * .25);
+      e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f); f.connect(e); e.connect(sfx);
+      src.start(t); src.stop(t + dur + .05);
+      return e;
+    }
+
+    /* background music: a gentle original music-box loop (C – Am – F – G) */
+    const chords = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];
+    const order = [0, 1, 2, 3, 2, 3, 0, 0];
+    const tops  = [79, 76, 77, 74, 72, 74, 76, 72];
+    const beat = 60 / 72, eighth = beat / 2;
+    let step = 0, next = 0;
+    function schedule() {
+      while (next < ctx.currentTime + 0.3) {
+        const bar = Math.floor(step / 8) % order.length, i = step % 8;
+        const ch = chords[order[bar]];
+        const pat = [0, 1, 2, 3, 2, 1, 2, 3];
+        bell(ch[pat[i]] + 12, next, i === 0 ? .1 : .065, music, 1.4);
+        if (i === 0) { pad(ch[0] - 12, next, beat * 4); bell(tops[bar] + 12, next + .01, .07, music, 2.4); }
+        if (i === 4 && bar % 2 === 1) bell(tops[(bar + 1) % 8] + 12, next, .05, music, 1.8);
+        step++; next += eighth;
+      }
+    }
+    function startMusic() {
+      if (!ctx || musicOn) return;
+      musicOn = true;
+      next = ctx.currentTime + .1;
+      music.gain.setValueAtTime(0, ctx.currentTime);
+      music.gain.linearRampToValueAtTime(.85, ctx.currentTime + 4);
+      schedule();
+      timer = setInterval(schedule, 60);
+    }
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      init();
+      muted = !muted;
+      try { localStorage.setItem('valentine-muted', muted ? '1' : '0'); } catch (err) {}
+      if (master) master.gain.setTargetAtTime(muted ? 0 : .9, ctx.currentTime, .08);
+      paint();
+    });
+    window.addEventListener('pointerdown', init);
+    window.addEventListener('keydown', init);
+
+    const ok = () => ctx && ctx.state === 'running' || (ctx && ctx.resume(), !!ctx);
+    return {
+      startMusic,
+      open() {                                  // lid pops, then whooshes away
+        if (!ok()) return;
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator(), e = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(220, t);
+        o.frequency.exponentialRampToValueAtTime(700, t + .09);
+        e.gain.setValueAtTime(.35, t);
+        e.gain.exponentialRampToValueAtTime(.0001, t + .16);
+        o.connect(e); e.connect(sfx); o.start(t); o.stop(t + .2);
+        noise(t, .08, 'highpass', 2000, 4000, .25);
+        noise(t + .3, 1.2, 'bandpass', 300, 2400, .22, .8);
+        [72, 76, 79, 84, 88].forEach((m, i) => bell(m + 12, t + .15 + i * .06, .07));
+      },
+      reveal() {                                // you've reached the note
+        if (!ok()) return;
+        const t = ctx.currentTime;
+        [84, 88, 91, 96, 91, 96, 100].forEach((m, i) => bell(m, t + i * .07, .08, sfx, 2));
+      },
+      scribble() {                              // pencil circling an answer
+        if (!ok()) return;
+        const t = ctx.currentTime;
+        for (let i = 0; i < 4; i++) noise(t + i * .09, .1, 'bandpass', 3200 + i * 300, 2400, .09, 1.4);
+      },
+      no() {                                    // a sad little "aww"
+        if (!ok()) return;
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator(), e = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(520, t);
+        o.frequency.exponentialRampToValueAtTime(300, t + .55);
+        lfo.frequency.value = 7; lg.gain.value = 9;
+        lfo.connect(lg); lg.connect(o.frequency);
+        e.gain.setValueAtTime(0, t);
+        e.gain.linearRampToValueAtTime(.16, t + .04);
+        e.gain.exponentialRampToValueAtTime(.0001, t + .6);
+        o.connect(e); e.connect(sfx);
+        o.start(t); lfo.start(t); o.stop(t + .65); lfo.stop(t + .65);
+      },
+      yes() {                                   // happy chime cascade
+        if (!ok()) return;
+        const t = ctx.currentTime;
+        [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => bell(m, t + i * .08, .12, sfx, 2.2));
+        [[60, 64, 67], [65, 69, 72], [67, 71, 74], [72, 76, 79, 84]].forEach((ch, j) =>
+          ch.forEach(m => bell(m + 12, t + .7 + j * .32, .07, sfx, 2.5)));
+        for (let i = 0; i < 14; i++) bell(96 + Math.floor(Math.random() * 8), t + .5 + Math.random() * 2.2, .03, sfx, .8);
+      },
+    };
+  })();
 
   /* ---------- camera ---------- */
   const scene = $('scene'), world = $('world'), box = $('box'), hint = $('hint');
@@ -554,7 +755,7 @@
     const s = Math.min(1, window.innerWidth / 430, window.innerHeight / 780);
     document.documentElement.style.setProperty('--s', s.toFixed(3));
     // how far to push in so the note fills most of the screen
-    const target = Math.min(0.74 * window.innerWidth / 132, 0.74 * window.innerHeight / 152);
+    const target = Math.min(0.7 * window.innerWidth / 132, 0.66 * window.innerHeight / 152);
     finalT = 79 + 1100 - 1100 * s / target;   // scale() doesn't scale z
   }
   fit();
@@ -676,7 +877,9 @@
     ry = ((ry % 360) + 540) % 360 - 180;
     rx = -30;
     box.classList.add('opened');
-    setTimeout(() => box.classList.add('gone'), 1700);
+    Sound.open();
+    setTimeout(Sound.startMusic, 900);
+    setTimeout(() => box.classList.add("gone"), 2100);
     $('ambient').classList.add('on');
     hint.style.opacity = 0;
     setTimeout(() => {
@@ -699,6 +902,7 @@
   function enterInside() {
     phase = 'inside';
     box.classList.add('inside');
+    Sound.reveal();
   }
   function leaveInside() {
     phase = 'opened';
@@ -709,8 +913,12 @@
   const yesBtn = $('yesBtn'), noBtn = $('noBtn');
   const noTexts = ['No', 'Sure?', 'Really?', 'Hmm…', 'Pls 🥺', 'Try Yes'];
   let noCount = 0, yesSize = 17;
+  [yesBtn, noBtn].forEach(b => b.addEventListener('pointerenter', e => {
+    if (e.pointerType === 'mouse' && phase === 'inside') Sound.scribble();
+  }));
   noBtn.addEventListener('click', e => {
     e.stopPropagation();
+    Sound.no();
     noCount++;
     noBtn.firstChild.textContent = noTexts[Math.min(noCount, noTexts.length - 1)] + ' ';
     yesSize = Math.min(yesSize + 1.5, 23);
@@ -720,7 +928,8 @@
   yesBtn.addEventListener('click', e => {
     e.stopPropagation();
     yesBtn.classList.add('chosen');
-    setTimeout(celebrate, 650);
+    if (isTouch) Sound.scribble();
+    setTimeout(() => { Sound.yes(); celebrate(); }, 650);
   });
 
   function celebrate() {
