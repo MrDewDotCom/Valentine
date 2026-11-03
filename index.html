@@ -358,6 +358,87 @@
   }
   .yay p { font-size: 1.15rem; opacity: .85; }
 
+
+  /* ---------- photo slideshow after "Yes" ---------- */
+  .yay h2, .yay p { transition: margin 1s ease, font-size 1s ease, opacity 1s; }
+  .yay.photos { justify-content: flex-start; padding-top: 3vh; gap: 4px; }
+  .yay.photos .heart3d { width: 54px; height: 54px; margin: 0; }
+  .yay.photos .heart3d span { font-size: 46px; }
+  .heart3d span { transition: font-size 1s ease; }
+  .heart3d { transition: width 1s ease, height 1s ease, margin 1s ease; }
+  .yay.photos h2 { font-size: clamp(1.8rem, 7vw, 2.6rem); }
+  .yay.photos p { opacity: 0; height: 0; }
+  .gallery {
+    position: relative;
+    width: min(84vw, 360px);
+    height: min(calc(84vw * 1.2), 432px, 66vh);
+    margin-top: 14px;
+    perspective: 1000px;
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 1s ease, transform 1s ease;
+    display: none;
+    touch-action: pan-y;
+  }
+  .yay.photos .gallery { display: block; }
+  .gallery.in { opacity: 1; transform: none; }
+  .polaroid {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 100%;
+    max-width: calc(66vh / 1.2);
+    height: 100%;
+    background: #fffaf3;
+    padding: 4.5% 4.5% 0;
+    border-radius: 4px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    display: flex;
+    flex-direction: column;
+    transform-style: preserve-3d;
+    transition: transform 1s cubic-bezier(.3,1.2,.5,1), opacity .8s ease;
+    opacity: 0;
+    transform: translateX(70%) rotateY(-75deg) rotateZ(var(--rz));
+    pointer-events: none;
+  }
+  .polaroid.prev { transform: translateX(-70%) rotateY(75deg) rotateZ(var(--rz)); }
+  .polaroid.active { opacity: 1; transform: rotateZ(var(--rz)); pointer-events: auto; }
+  .polaroid .pic {
+    flex: 1;
+    min-height: 0;
+    background: #2a0a1f center / cover no-repeat;
+    border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    color: #ffb3cc; text-align: center; font-size: .9rem; padding: 10px;
+  }
+  .polaroid .cap {
+    font-family: 'Caveat', 'Dancing Script', cursive;
+    font-weight: 700;
+    font-size: clamp(1.3rem, 5.5vw, 1.7rem);
+    color: #6b1530;
+    text-align: center;
+    padding: 10px 6px 14px;
+  }
+  .gal-btn {
+    position: absolute;
+    top: 50%;
+    width: 42px; height: 42px;
+    margin-top: -21px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.85);
+    color: #b81d48;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  .gal-btn.l { left: -14px; }
+  .gal-btn.r { right: -14px; }
+  .dots { position: absolute; bottom: -26px; left: 0; right: 0; display: flex; gap: 8px; justify-content: center; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.35); transition: background .3s, transform .3s; }
+  .dots i.on { background: #ff7eb0; transform: scale(1.3); }
+
   .confetti {
     position: fixed; top: -40px;
     pointer-events: none;
@@ -432,7 +513,69 @@
   <div class="heart3d"><span>💖</span></div>
   <h2>Yay! I love you!</h2>
   <p>Happy Valentine's Day, my love 🌹</p>
+  <div class="gallery" id="gallery">
+    <button class="gal-btn l" id="galPrev" aria-label="Previous photo">‹</button>
+    <button class="gal-btn r" id="galNext" aria-label="Next photo">›</button>
+    <div class="dots" id="dots"></div>
+  </div>
 </section>
+
+<script>
+/* =====================================================================
+   ✏️  SETTINGS: change everything here (see README.md)
+   ===================================================================== */
+const CONFIG = {
+
+  // ---- Words on the page ------------------------------------------------
+  text: {
+    tapHint:     'A little something<br>for you… tap it 💌',  // above the closed gift
+    insideHint:  "Something's inside…",                       // after the gift opens
+    question:    'Will you be<br>my Valentine?',              // on the note (<br> = new line)
+    yes:         'Yes 💖',
+    no:          'No',
+    noReplies:   ['Sure?', 'Really?', 'Hmm…', 'Pls 🥺', 'Try Yes'],  // "No" changes to these
+    signature:   '— with all my love',
+    yesTitle:    'Yay! I love you!',
+    yesSubtitle: "Happy Valentine's Day, my love 🌹",
+  },
+
+  // ---- Photos shown after they say "Yes" ---------------------------------
+  // Put your pictures in the "photos" folder, then list them here.
+  // Leave the list empty  ( photos: [] )  to skip the slideshow.
+  photos: [
+    { src: 'photos/photo1.jpg', caption: 'The day we met 💕' },
+    { src: 'photos/photo2.jpg', caption: 'Our favourite place' },
+    { src: 'photos/photo3.jpg', caption: 'Many more to come ✨' },
+  ],
+  slideSeconds: 4,          // how long each photo stays before the next one
+  photosDelay: 2.5,         // seconds after "Yes" before the photos appear
+
+  // ---- Sound -------------------------------------------------------------
+  sound: {
+    startMuted: false,      // true = page starts silent (the 🔊 button turns it on)
+    musicVolume: 0.85,      // 0 – 1
+    effectsVolume: 0.8,     // 0 – 1
+    // Your own sound files (mp3 / wav / ogg). Leave '' to use the built-in sounds.
+    files: {
+      music:  '',           // background song, loops   e.g. 'sounds/our-song.mp3'
+      open:   '',           // when the gift opens
+      reveal: '',           // when you reach the note
+      hover:  '',           // pointing at Yes / No
+      no:     '',           // clicking No
+      yes:    '',           // clicking Yes
+    },
+  },
+
+  // ---- Rose colours [outer, middle, dark centre] -------------------------
+  roseColors: [
+    ['#e8335f', '#c9244f', '#8f1234'],
+    ['#ff5c86', '#e8335f', '#a3163f'],
+    ['#d81f4f', '#b0153f', '#760c28'],
+    ['#ff7aa2', '#f0507f', '#b81d48'],
+  ],
+};
+/* ===================================================================== */
+</script>
 
 <script>
   const $ = id => document.getElementById(id);
@@ -440,6 +583,16 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const isTouch = matchMedia('(pointer: coarse)').matches;
+
+  /* ---------- apply the words from CONFIG ---------- */
+  const T = CONFIG.text;
+  $('hint').innerHTML = `<span class="line">${T.tapHint}</span>`;
+  document.querySelector('.note h1').innerHTML = T.question;
+  $('yesBtn').firstChild.textContent = T.yes + ' ';
+  $('noBtn').firstChild.textContent = T.no + ' ';
+  document.querySelector('.note .sig').textContent = T.signature;
+  document.querySelector('.yay h2').textContent = T.yesTitle;
+  document.querySelector('.yay p').textContent = T.yesSubtitle;
 
   /* ---------- background hearts ---------- */
   const bg = $('bgHearts');
@@ -554,12 +707,7 @@
     g.appendChild(cap);
     return g;
   }
-  const palettes = [
-    ['#e8335f', '#c9244f', '#8f1234'],
-    ['#ff5c86', '#e8335f', '#a3163f'],
-    ['#d81f4f', '#b0153f', '#760c28'],
-    ['#ff7aa2', '#f0507f', '#b81d48'],
-  ];
+  const palettes = CONFIG.roseColors;
   // [x, y, size, height above note]: piled around the edges, leaving the words readable
   const pile = [
     [-60, -64, 48, 2], [-32, -76, 42, 6], [-70, -36, 40, 4], [-46, -48, 36, 9],
@@ -570,7 +718,11 @@
   ];
   const rosesEl = $('roses');
   pile.forEach(([x, y, size, h], i) => {
-    const r = rose3D(size * .84, palettes[i % palettes.length], i + 1);
+    const S = size * .84;
+    // keep every petal and leaf inside the box walls (inner walls sit at ±89px)
+    const lim = 84 - S * .62;
+    x = clamp(x, -lim, lim); y = clamp(y, -lim, lim);
+    const r = rose3D(S, palettes[i % palettes.length], i + 1);
     r.style.transform = `translate3d(${x}px, ${y}px, ${h + 1}px)`;
     rosesEl.appendChild(r);
   });
@@ -587,8 +739,9 @@
   /* ---------- sound (all generated live with Web Audio, no files) ---------- */
   const Sound = (() => {
     let ctx = null, master, music, sfx, noiseBuf, musicOn = false, timer = null;
-    let muted = false;
-    try { muted = localStorage.getItem('valentine-muted') === '1'; } catch (e) {}
+    const SC = CONFIG.sound, files = SC.files || {};
+    let muted = !!SC.startMuted, songEl = null;
+    try { const saved = localStorage.getItem('valentine-muted'); if (saved !== null) muted = saved === '1'; } catch (e) {}
     const btn = $('soundBtn');
     const paint = () => { btn.textContent = muted ? '🔇' : '🔊'; btn.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound'); };
     paint();
@@ -610,7 +763,7 @@
       const wet = ctx.createGain(); wet.gain.value = 0.28;
       verb.connect(wet); wet.connect(master);
       music = ctx.createGain(); music.gain.value = 0; music.connect(master); music.connect(verb);
-      sfx = ctx.createGain(); sfx.gain.value = 0.8; sfx.connect(master); sfx.connect(verb);
+      sfx = ctx.createGain(); sfx.gain.value = SC.effectsVolume; sfx.connect(master); sfx.connect(verb);
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 1.5, ctx.sampleRate);
       const nd = noiseBuf.getChannelData(0);
       for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
@@ -672,9 +825,17 @@
     function startMusic() {
       if (!ctx || musicOn) return;
       musicOn = true;
+      if (files.music) {                       // your own song instead of the music box
+        songEl = new Audio(files.music);
+        songEl.loop = true;
+        songEl.volume = SC.musicVolume;
+        songEl.muted = muted;
+        songEl.play().catch(() => {});
+        return;
+      }
       next = ctx.currentTime + .1;
       music.gain.setValueAtTime(0, ctx.currentTime);
-      music.gain.linearRampToValueAtTime(.85, ctx.currentTime + 4);
+      music.gain.linearRampToValueAtTime(SC.musicVolume, ctx.currentTime + 4);
       schedule();
       timer = setInterval(schedule, 60);
     }
@@ -685,15 +846,22 @@
       muted = !muted;
       try { localStorage.setItem('valentine-muted', muted ? '1' : '0'); } catch (err) {}
       if (master) master.gain.setTargetAtTime(muted ? 0 : .9, ctx.currentTime, .08);
+      if (songEl) songEl.muted = muted;
       paint();
     });
     window.addEventListener('pointerdown', init);
     window.addEventListener('keydown', init);
 
     const ok = () => ctx && ctx.state === 'running' || (ctx && ctx.resume(), !!ctx);
+    function custom(name) {                    // play your own file for this moment, if you set one
+      if (!files[name]) return false;
+      if (!muted) { const a = new Audio(files[name]); a.volume = SC.effectsVolume; a.play().catch(() => {}); }
+      return true;
+    }
     return {
       startMusic,
       open() {                                  // lid pops, then whooshes away
+        if (custom('open')) return;
         if (!ok()) return;
         const t = ctx.currentTime;
         const o = ctx.createOscillator(), e = ctx.createGain();
@@ -708,16 +876,19 @@
         [72, 76, 79, 84, 88].forEach((m, i) => bell(m + 12, t + .15 + i * .06, .07));
       },
       reveal() {                                // you've reached the note
+        if (custom('reveal')) return;
         if (!ok()) return;
         const t = ctx.currentTime;
         [84, 88, 91, 96, 91, 96, 100].forEach((m, i) => bell(m, t + i * .07, .08, sfx, 2));
       },
       scribble() {                              // pencil circling an answer
+        if (custom('hover')) return;
         if (!ok()) return;
         const t = ctx.currentTime;
         for (let i = 0; i < 4; i++) noise(t + i * .09, .1, 'bandpass', 3200 + i * 300, 2400, .09, 1.4);
       },
       no() {                                    // a sad little "aww"
+        if (custom('no')) return;
         if (!ok()) return;
         const t = ctx.currentTime;
         const o = ctx.createOscillator(), e = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
@@ -733,6 +904,7 @@
         o.start(t); lfo.start(t); o.stop(t + .65); lfo.stop(t + .65);
       },
       yes() {                                   // happy chime cascade
+        if (custom('yes')) return;
         if (!ok()) return;
         const t = ctx.currentTime;
         [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => bell(m, t + i * .08, .12, sfx, 2.2));
@@ -792,7 +964,7 @@
 
       // top hint while outside, bottom "zoom out" hint while inside
       if (hintReady) hint.style.opacity = zoomT < 0.25 && zoom < 0.3 ? 1 : 0;
-      $('hintOut').classList.toggle('on', phase === 'inside' && zoomT === 1);
+      $('hintOut').classList.toggle('on', phase === 'inside' && zoomT === 1 && !celebrating);
 
       if (phase === 'opened' && zoom > 0.97) enterInside();
       if (phase === 'inside' && zoomT < 0.9) leaveInside();
@@ -825,6 +997,7 @@
   window.addEventListener('pointercancel', endPointer);
 
   window.addEventListener('pointermove', e => {
+    if (celebrating) return;
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     // gentle look-around once the box is open
@@ -854,12 +1027,13 @@
 
   window.addEventListener('wheel', e => {
     e.preventDefault();
+    if (celebrating) return;
     if (phase === 'closed') return;
     zoomT = clamp(zoomT + clamp(e.deltaY, -100, 100) * 0.0011, 0, 1);  // scroll down = move in
   }, { passive: false });
 
   window.addEventListener('keydown', e => {
-    if (phase === 'closed') return;
+    if (phase === 'closed' || celebrating) return;
     if (['ArrowUp', '+', '='].includes(e.key)) zoomT = clamp(zoomT + .12, 0, 1);
     if (['ArrowDown', '-'].includes(e.key)) zoomT = clamp(zoomT - .12, 0, 1);
   });
@@ -884,7 +1058,7 @@
     hint.style.opacity = 0;
     setTimeout(() => {
       hintReady = true;
-      hint.innerHTML = `<span class="line">Something's inside… <span class="arrow">🔍</span></span>
+      hint.innerHTML = `<span class="line">${T.insideHint} <span class="arrow">🔍</span></span>
         <small>${isTouch ? 'Swipe up or pinch out to look closer' : 'Scroll down to look closer'}</small>`;
     }, 1300);
   }
@@ -911,7 +1085,7 @@
 
   /* ---------- answers ---------- */
   const yesBtn = $('yesBtn'), noBtn = $('noBtn');
-  const noTexts = ['No', 'Sure?', 'Really?', 'Hmm…', 'Pls 🥺', 'Try Yes'];
+  const noTexts = [T.no, ...T.noReplies];
   let noCount = 0, yesSize = 17;
   [yesBtn, noBtn].forEach(b => b.addEventListener('pointerenter', e => {
     if (e.pointerType === 'mouse' && phase === 'inside') Sound.scribble();
@@ -932,8 +1106,64 @@
     setTimeout(() => { Sound.yes(); celebrate(); }, 650);
   });
 
+
+  /* ---------- photo slideshow ---------- */
+  let celebrating = false;
+  function startGallery() {
+    const list = CONFIG.photos || [];
+    if (!list.length) return;
+    const gal = $('gallery'), dotsEl = $('dots');
+    const cards = list.map((ph, i) => {
+      const c = document.createElement('figure');
+      c.className = 'polaroid';
+      c.style.setProperty('--rz', ((i % 2 ? 1 : -1) * (1.5 + Math.random() * 2.5)).toFixed(1) + 'deg');
+      const pic = document.createElement('div');
+      pic.className = 'pic';
+      const img = new Image();
+      img.onload = () => { pic.style.backgroundImage = `url("${ph.src}")`; };
+      img.onerror = () => { pic.textContent = `📷 Photo not found: ${ph.src}`; };
+      img.src = ph.src;
+      const cap = document.createElement('figcaption');
+      cap.className = 'cap';
+      cap.textContent = ph.caption || '';
+      c.append(pic, cap);
+      gal.insertBefore(c, dotsEl);
+      const d = document.createElement('i');
+      dotsEl.appendChild(d);
+      return c;
+    });
+    if (list.length < 2) { $('galPrev').style.display = $('galNext').style.display = 'none'; dotsEl.style.display = 'none'; }
+    let cur = 0, timer = null;
+    function show(n) {
+      cur = (n + cards.length) % cards.length;
+      cards.forEach((c, i) => {
+        c.classList.toggle('active', i === cur);
+        c.classList.toggle('prev', i !== cur && (i < cur || (cur === 0 && i === cards.length - 1 && cards.length > 2)));
+      });
+      [...dotsEl.children].forEach((d, i) => d.classList.toggle('on', i === cur));
+    }
+    function restart() {
+      clearInterval(timer);
+      if (cards.length > 1) timer = setInterval(() => show(cur + 1), CONFIG.slideSeconds * 1000);
+    }
+    $('galPrev').onclick = e => { e.stopPropagation(); show(cur - 1); restart(); };
+    $('galNext').onclick = e => { e.stopPropagation(); show(cur + 1); restart(); };
+    let sx = null;
+    gal.addEventListener('pointerdown', e => { sx = e.clientX; });
+    gal.addEventListener('pointerup', e => {
+      if (sx === null) return;
+      const dx = e.clientX - sx; sx = null;
+      if (Math.abs(dx) > 40) { show(cur + (dx < 0 ? 1 : -1)); restart(); }
+    });
+    $('yay').classList.add('photos');
+    requestAnimationFrame(() => { show(0); setTimeout(() => gal.classList.add('in'), 50); });
+    restart();
+  }
+
   function celebrate() {
+    celebrating = true;
     $('yay').classList.add('visible');
+    setTimeout(startGallery, CONFIG.photosDelay * 1000);
     const pieces = ['💖', '💕', '🌹', '💗', '✨', '❤️'];
     for (let i = 0; i < 80; i++) {
       setTimeout(() => {
